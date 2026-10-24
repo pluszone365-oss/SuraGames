@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.pluszone.finance.app",
+      "sha256_cert_fingerprints": [
+        "14:6D:E2:0D:B0:1A:10:97:54:E3:64:16:32:A0:C6:67:E6:C6:A0:72:91:D8 font:01:A0:23:45:67:89:AB:CD"
+      ]
+    }
+  }
+]

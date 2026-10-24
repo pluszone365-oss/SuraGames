@@ -1,0 +1,116 @@
+{
+  "entities": {
+    "ERPState": {
+      "title": "ERP State",
+      "description": "Financial ERP data state synchronized in real-time across users",
+      "type": "object",
+      "properties": {
+        "updatedAt": { "type": "string" },
+        "updatedBy": { "type": "string" }
+      }
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Authenticated user profile data tracked via Firebase Auth & Firestore",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "username": { "type": "string" },
+        "role": { "type": "string" },
+        "active": { "type": "boolean" },
+        "avatarUrl": { "type": "string" },
+        "branch": { "type": "string" },
+        "lastLoginAt": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "email", "role"]
+    },
+    "IncomePendingConfirmation": {
+      "title": "Income Pending Confirmation",
+      "description": "Customer payments pending bank SMS confirmation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "expectedAmount": { "type": "number" },
+        "currency": { "type": "string", "enum": ["ETB"] },
+        "createdAt": { "type": "string" },
+        "staffId": { "type": "string" },
+        "customerRef": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "paid", "flagged_unconfirmed", "flagged_mismatch"]
+        },
+        "matchedConfirmationId": { "type": "string" }
+      },
+      "required": ["id", "expectedAmount", "currency", "createdAt", "staffId", "status"]
+    },
+    "TransactionConfirmed": {
+      "title": "Transaction Confirmed",
+      "description": "Verified incoming SMS transaction captured on company device",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "provider": { "type": "string", "enum": ["telebirr", "cbe", "ebirr"] },
+        "rawSmsText": { "type": "string" },
+        "sender": { "type": "string" },
+        "amount": { "type": "number" },
+        "referenceNumber": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderPhone": { "type": "string" },
+        "transactionDate": { "type": "string" },
+        "balanceAfter": { "type": "number" },
+        "receivedAt": { "type": "string" },
+        "matched": { "type": "boolean" },
+        "matchedIncomeId": { "type": "string" }
+      },
+      "required": ["id", "provider", "rawSmsText", "sender", "amount", "referenceNumber", "transactionDate", "receivedAt", "matched"]
+    },
+    "TeamChatMessage": {
+      "title": "Team Chat Message",
+      "description": "Real-time communication message between team members with optional financial attachments",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "channelId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderRole": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "senderAvatar": { "type": "string" },
+        "fileUrl": { "type": "string" },
+        "fileName": { "type": "string" },
+        "fileType": { "type": "string" },
+        "replyToId": { "type": "string" },
+        "replyToText": { "type": "string" },
+        "replyToSenderName": { "type": "string" },
+        "isAnnouncement": { "type": "boolean" }
+      },
+      "required": ["id", "channelId", "senderId", "senderName", "text", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Persistent user profile documents synchronized with Firebase Authentication"
+    },
+    "/erp_state/{documentId}": {
+      "schema": "ERPState",
+      "description": "Full ERP data state"
+    },
+    "/income_pending_confirmation/{incomeId}": {
+      "schema": "IncomePendingConfirmation",
+      "description": "Pending customer payments awaiting official SMS confirmation"
+    },
+    "/transactions_confirmed/{confirmationId}": {
+      "schema": "TransactionConfirmed",
+      "description": "SMS bank confirmations written exclusively via Admin SDK / webhook"
+    },
+    "/team_chat_messages/{messageId}": {
+      "schema": "TeamChatMessage",
+      "description": "Real-time team chat messages synced instantaneously across all devices"
+    }
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "Container",
+      "style": "emphasis",
+      "items": [
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "Image",
+                  "url": "/pwa-192.png",
+                  "size": "Small",
+                  "style": "Person"
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "width": "stretch",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "Plus Game Zone",
+                  "weight": "Bolder",
+                  "size": "Medium",
+                  "color": "Accent"
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "Finance & Gaming Lounge ERP",
+                  "size": "Small",
+                  "isSubtle": true,
+                  "spacing": "None"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "items": [
+        {
+          "type": "FactSet",
+          "facts": [
+            {
+              "title": "Total Net Balance",
+              "value": "${totalBalance} ETB"
+            },
+            {
+              "title": "Today's Revenue",
+              "value": "${todayIncome} ETB"
+            },
+            {
+              "title": "Active PS5 Stations",
+              "value": "${activeStations} Active"
+            },
+            {
+              "title": "CBE + Telebirr",
+              "value": "${digitalBalance} ETB"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.OpenUrl",
+      "title": "Open Dashboard",
+      "url": "/?shortcut=gaming"
+    },
+    {
+      "type": "Action.OpenUrl",
+      "title": "New Payment",
+      "url": "/?shortcut=transaction"
+    }
+  ]
+}

@@ -1,0 +1,181 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="100%" height="100%" fill="none">
+  <!-- Commercial Bank of Ethiopia (CBE) Official Insignia with 3-Wing Netting and Gold Coin -->
+  <defs>
+    <!-- Metallic Gold Radial Gradient for Coin -->
+    <radialGradient id="cbeGoldCoinGrad" cx="38%" cy="32%" r="68%">
+      <stop offset="0%" stop-color="#FFF8D6" />
+      <stop offset="25%" stop-color="#F3CE63" />
+      <stop offset="60%" stop-color="#CAA035" />
+      <stop offset="85%" stop-color="#9C731A" />
+      <stop offset="100%" stop-color="#6E4D09" />
+    </radialGradient>
+
+    <!-- Bevel Rim Gradient -->
+    <linearGradient id="cbeRimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF0B3" />
+      <stop offset="50%" stop-color="#B88A22" />
+      <stop offset="100%" stop-color="#5E3F05" />
+    </linearGradient>
+
+    <!-- Inner Core Monogram Disc -->
+    <radialGradient id="cbeInnerCore" cx="45%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#FFE899" />
+      <stop offset="50%" stop-color="#DFB33F" />
+      <stop offset="100%" stop-color="#8F630E" />
+    </radialGradient>
+
+    <!-- Wing Netting Pattern Definition -->
+    <pattern id="cbeNetPattern" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="4" stroke="#FFFFFF" stroke-width="0.75" opacity="0.65" />
+      <line x1="0" y1="0" x2="4" y2="0" stroke="#E5C158" stroke-width="0.75" opacity="0.65" />
+    </pattern>
+
+    <!-- Wing Drop Shadow Filter -->
+    <filter id="cbeDropGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.8" flood-color="#000000" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- 3 Swirling Net Wings rotated at 120 degree intervals -->
+  <g transform="translate(64, 64)">
+    <!-- WING 1 (Top-Right: 0 deg orientation) -->
+    <g transform="rotate(25)">
+      <!-- Filled translucent netting body -->
+      <path 
+        d="M 12 -12 
+           C 25 -42 56 -48 54 -24 
+           C 52 -6 32 8 16 12 
+           Z" 
+        fill="url(#cbeNetPattern)" 
+        opacity="0.95" 
+      />
+      <!-- Specular Golden Leading Edge Ribbon -->
+      <path 
+        d="M 12 -12 C 25 -42 56 -48 54 -24 C 52 -6 32 8 16 12" 
+        stroke="#DDB748" 
+        stroke-width="1.8" 
+        stroke-linecap="round" 
+        fill="none" 
+      />
+      <path 
+        d="M 12 -12 C 25 -42 56 -48 54 -24" 
+        stroke="#FFF5D0" 
+        stroke-width="1.2" 
+        stroke-linecap="round" 
+        fill="none" 
+      />
+    </g>
+
+    <!-- WING 2 (Bottom-Right: 120 deg orientation) -->
+    <g transform="rotate(145)">
+      <!-- Filled translucent netting body -->
+      <path 
+        d="M 12 -12 
+           C 25 -42 56 -48 54 -24 
+           C 52 -6 32 8 16 12 
+           Z" 
+        fill="url(#cbeNetPattern)" 
+        opacity="0.95" 
+      />
+      <!-- Specular Golden Leading Edge Ribbon -->
+      <path 
+        d="M 12 -12 C 25 -42 56 -48 54 -24 C 52 -6 32 8 16 12" 
+        stroke="#DDB748" 
+        stroke-width="1.8" 
+        stroke-linecap="round" 
+        fill="none" 
+      />
+      <path 
+        d="M 12 -12 C 25 -42 56 -48 54 -24" 
+        stroke="#FFF5D0" 
+        stroke-width="1.2" 
+        stroke-linecap="round" 
+        fill="none" 
+      />
+    </g>
+
+    <!-- WING 3 (Bottom-Left: 240 deg orientation) -->
+    <g transform="rotate(265)">
+      <!-- Filled translucent netting body -->
+      <path 
+        d="M 12 -12 
+           C 25 -42 56 -48 54 -24 
+           C 52 -6 32 8 16 12 
+           Z" 
+        fill="url(#cbeNetPattern)" 
+        opacity="0.95" 
+      />
+      <!-- Specular Golden Leading Edge Ribbon -->
+      <path 
+        d="M 12 -12 C 25 -42 56 -48 54 -24 C 52 -6 32 8 16 12" 
+        stroke="#DDB748" 
+        stroke-width="1.8" 
+        stroke-linecap="round" 
+        fill="none" 
+      />
+      <path 
+        d="M 12 -12 C 25 -42 56 -48 54 -24" 
+        stroke="#FFF5D0" 
+        stroke-width="1.2" 
+        stroke-linecap="round" 
+        fill="none" 
+      />
+    </g>
+
+    <!-- CENTER EMBOSSED CBE GOLD COIN -->
+    <!-- Coin Outer Rim & Shadow -->
+    <circle cx="0" cy="0" r="28" fill="url(#cbeRimGrad)" filter="url(#cbeDropGlow)" />
+    <circle cx="0" cy="0" r="26.2" fill="url(#cbeGoldCoinGrad)" stroke="#FFE899" stroke-width="0.8" />
+    
+    <!-- Concentric Beaded Border / Radial Dentils -->
+    <circle cx="0" cy="0" r="23.2" fill="none" stroke="#7A5308" stroke-width="0.9" stroke-dasharray="1.2 1.4" opacity="0.85" />
+    <circle cx="0" cy="0" r="21.5" fill="none" stroke="#E8BE4F" stroke-width="0.7" />
+
+    <!-- Amharic Upper Arch Text: የኢትዮጵያ ንግድ ባንክ -->
+    <path id="cbeTextPathUpper" d="M -18.5,0 A 18.5,18.5 0 1,1 18.5,0" fill="none" />
+    <text font-size="3.8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="900" fill="#3D2601" text-anchor="middle">
+      <textPath href="#cbeTextPathUpper" startOffset="50%">የኢትዮጵያ ንግድ ባንክ</textPath>
+    </text>
+
+    <!-- Lower Rim Stars / Dots -->
+    <g fill="#472C02" transform="scale(0.9)">
+      <circle cx="-12" cy="14" r="0.9" />
+      <circle cx="-6" cy="17" r="0.9" />
+      <circle cx="0" cy="18" r="1.1" />
+      <circle cx="6" cy="17" r="0.9" />
+      <circle cx="12" cy="14" r="0.9" />
+    </g>
+
+    <!-- Center Monogram Disc -->
+    <circle cx="0" cy="2" r="14.5" fill="url(#cbeInnerCore)" stroke="#6E4D09" stroke-width="1.2" />
+    <circle cx="0" cy="2" r="13.2" fill="none" stroke="#FFF0B3" stroke-width="0.7" opacity="0.9" />
+
+    <!-- Bold CBE Typography with 3D Engraved Bevel Effect -->
+    <!-- Drop Shadow Layer -->
+    <text 
+      x="0" 
+      y="6.8" 
+      font-family="'Times New Roman', Times, Georgia, serif" 
+      font-weight="900" 
+      font-size="11.5" 
+      fill="#422901" 
+      text-anchor="middle" 
+      letter-spacing="-0.5"
+    >
+      CBE
+    </text>
+    <!-- Highlight Layer -->
+    <text 
+      x="-0.4" 
+      y="6.2" 
+      font-family="'Times New Roman', Times, Georgia, serif" 
+      font-weight="900" 
+      font-size="11.5" 
+      fill="#2A1A00" 
+      text-anchor="middle" 
+      letter-spacing="-0.5"
+    >
+      CBE
+    </text>
+  </g>
+</svg>

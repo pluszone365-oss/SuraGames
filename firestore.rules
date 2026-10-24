@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function for user auth
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // User profile documents: Read accessible to authenticated users, write to owner
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    // ERP State collection security rules
+    match /erp_state/{documentId} {
+      allow read: if true;
+      allow write: if request.resource.data.keys().hasAll(['state', 'updatedAt'])
+                   && request.resource.data.updatedAt is string;
+    }
+
+    // Team Chat messages: Real-time messaging across team members
+    match /team_chat_messages/{messageId} {
+      allow read, write: if true;
+    }
+
+    // transactions_confirmed:
+    // Strictly WRITE-ONLY via Cloud Functions using Admin SDK / service account.
+    // Client SDKs (including admin users) cannot write, insert, update, or delete.
+    match /transactions_confirmed/{confirmationId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // income_pending_confirmation:
+    // Clients/staff can create new pending payments with status 'pending' or 'flagged_unconfirmed'.
+    match /income_pending_confirmation/{incomeId} {
+      allow read: if true;
+      allow create: if request.resource.data.status in ['pending', 'flagged_unconfirmed']
+                    && request.resource.data.expectedAmount is number
+                    && request.resource.data.expectedAmount > 0
+                    && (!('matchedConfirmationId' in request.resource.data) || request.resource.data.matchedConfirmationId == null);
+      
+      // Client updates can only update non-status fields or flag, but NEVER transition to 'paid'
+      allow update: if request.resource.data.status != 'paid'
+                    && resource.data.status != 'paid'
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['matchedConfirmationId']))
+                    && (!('matchedConfirmationId' in request.resource.data) || request.resource.data.matchedConfirmationId == resource.data.matchedConfirmationId);
+
+      allow delete: if resource.data.status != 'paid';
+    }
+
+    // Test connection document for connection validation
+    match /test/{documentId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Fallback rule for other operational collections
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
