@@ -333,6 +333,8 @@ function getStateFingerprint(state: ERPState): string {
   }
 }
 
+export const FIREBASE_RESET_EPOCH = '2026-10-25-pure-clean-slate';
+
 /**
  * Subscribe to real-time updates from Firebase Firestore.
  * When any user or device updates the ERP state in Firestore,
@@ -361,10 +363,8 @@ export function subscribeToFirebaseState(onUpdate: (remoteState: Partial<ERPStat
           const data = snapshot.data();
           if (data && data.state) {
             const rawState: any = typeof data.state === 'string' ? JSON.parse(data.state) : { ...data.state };
-            const rawDeleted = Array.isArray(rawState.deletedEntityIds) ? rawState.deletedEntityIds : [];
-            const deletedTestIds = new Set(rawDeleted.filter((id: string) => !isCanonicalTransactionId(id)));
-            deletedTestIds.add('tx-1790749015154');
-            deletedTestIds.add('tx-1790748931615');
+            const isFreshEpoch = data.resetEpoch === FIREBASE_RESET_EPOCH || rawState.resetEpoch === FIREBASE_RESET_EPOCH;
+
             if (rawState) {
               rawState.users = [{
                 id: 'u-1',
@@ -377,16 +377,42 @@ export function subscribeToFirebaseState(onUpdate: (remoteState: Partial<ERPStat
                 branch: 'Addis Ababa HQ'
               }];
               rawState.chatMessages = [];
-              if (Array.isArray(rawState.transactions)) {
-                rawState.transactions = rawState.transactions
-                  .filter((t: any) => t && t.date && t.date >= '2026-10-24')
-                  .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+              if (!isFreshEpoch) {
+                // Completely purge all legacy pre-reset data from Firestore
+                rawState.wallets = [];
+                rawState.transactions = [];
+                rawState.transfers = [];
+                rawState.equbs = [];
+                rawState.loans = [];
+                rawState.assets = [];
+                rawState.recurring = [];
+                rawState.receivables = [];
+                rawState.goals = [];
+                rawState.pendingReviewTransactions = [];
+                rawState.approvalRequests = [];
+                rawState.auditLogs = [];
+                rawState.sentReportEmailLogs = [];
+                rawState.deletedEntityIds = [];
+              } else {
+                // Fresh epoch: filter out legacy IDs
+                rawState.wallets = Array.isArray(rawState.wallets)
+                  ? rawState.wallets.filter((w: any) => !['w-telebirr', 'w-cbe', 'w-ebirr', 'w-cash', 'w-savings'].includes(w.id))
+                  : [];
+                rawState.transactions = Array.isArray(rawState.transactions)
+                  ? rawState.transactions.filter((t: any) => !t.id?.startsWith('tx-start-') && !t.id?.startsWith('tx-20261019'))
+                  : [];
+                rawState.transfers = Array.isArray(rawState.transfers) ? rawState.transfers : [];
+                rawState.equbs = Array.isArray(rawState.equbs) ? rawState.equbs : [];
+                rawState.loans = Array.isArray(rawState.loans) ? rawState.loans : [];
+                rawState.assets = Array.isArray(rawState.assets) ? rawState.assets : [];
+                rawState.recurring = Array.isArray(rawState.recurring) ? rawState.recurring : [];
+                rawState.receivables = Array.isArray(rawState.receivables) ? rawState.receivables : [];
               }
             }
             isRemoteUpdate = true;
             lastSyncedFingerprint = getStateFingerprint(rawState as ERPState);
             onUpdate(rawState as ERPState);
-            // Reset flag after 250ms so user interactions are never blocked
             setTimeout(() => {
               isRemoteUpdate = false;
             }, 250);
@@ -440,10 +466,8 @@ export async function fetchLatestFirebaseState(): Promise<Partial<ERPState> | nu
       const data = snapshot.data();
       if (data && data.state) {
         const rawState: any = typeof data.state === 'string' ? JSON.parse(data.state) : { ...data.state };
-        const rawDeleted = Array.isArray(rawState.deletedEntityIds) ? rawState.deletedEntityIds : [];
-        const deletedTestIds = new Set(rawDeleted.filter((id: string) => !isCanonicalTransactionId(id)));
-        deletedTestIds.add('tx-1790749015154');
-        deletedTestIds.add('tx-1790748931615');
+        const isFreshEpoch = data.resetEpoch === FIREBASE_RESET_EPOCH || rawState.resetEpoch === FIREBASE_RESET_EPOCH;
+
         if (rawState) {
           rawState.users = [{
             id: 'u-1',
@@ -456,10 +480,36 @@ export async function fetchLatestFirebaseState(): Promise<Partial<ERPState> | nu
             branch: 'Addis Ababa HQ'
           }];
           rawState.chatMessages = [];
-          if (Array.isArray(rawState.transactions)) {
-            rawState.transactions = rawState.transactions
-              .filter((t: any) => t && t.date && t.date >= '2026-10-24')
-              .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+          if (!isFreshEpoch) {
+            // Completely purge all legacy pre-reset data from Firestore
+            rawState.wallets = [];
+            rawState.transactions = [];
+            rawState.transfers = [];
+            rawState.equbs = [];
+            rawState.loans = [];
+            rawState.assets = [];
+            rawState.recurring = [];
+            rawState.receivables = [];
+            rawState.goals = [];
+            rawState.pendingReviewTransactions = [];
+            rawState.approvalRequests = [];
+            rawState.auditLogs = [];
+            rawState.sentReportEmailLogs = [];
+            rawState.deletedEntityIds = [];
+          } else {
+            rawState.wallets = Array.isArray(rawState.wallets)
+              ? rawState.wallets.filter((w: any) => !['w-telebirr', 'w-cbe', 'w-ebirr', 'w-cash', 'w-savings'].includes(w.id))
+              : [];
+            rawState.transactions = Array.isArray(rawState.transactions)
+              ? rawState.transactions.filter((t: any) => !t.id?.startsWith('tx-start-') && !t.id?.startsWith('tx-20261019'))
+              : [];
+            rawState.transfers = Array.isArray(rawState.transfers) ? rawState.transfers : [];
+            rawState.equbs = Array.isArray(rawState.equbs) ? rawState.equbs : [];
+            rawState.loans = Array.isArray(rawState.loans) ? rawState.loans : [];
+            rawState.assets = Array.isArray(rawState.assets) ? rawState.assets : [];
+            rawState.recurring = Array.isArray(rawState.recurring) ? rawState.recurring : [];
+            rawState.receivables = Array.isArray(rawState.receivables) ? rawState.receivables : [];
           }
         }
         lastSyncedFingerprint = getStateFingerprint(rawState as ERPState);
@@ -482,9 +532,9 @@ export async function fetchLatestFirebaseState(): Promise<Partial<ERPState> | nu
 
 /**
  * Immediately push state to Firestore without debounce delay.
- * Never blocked by remote state update flag.
+ * When forceFullOverwrite is true, completely replaces the document ({ merge: false }).
  */
-export async function syncStateToFirebaseNow(state: ERPState): Promise<void> {
+export async function syncStateToFirebaseNow(state: ERPState, forceFullOverwrite = false): Promise<void> {
   if (isQuotaExceeded) return;
   if (syncTimeout) {
     clearTimeout(syncTimeout);
@@ -492,7 +542,7 @@ export async function syncStateToFirebaseNow(state: ERPState): Promise<void> {
   }
 
   const fingerprint = getStateFingerprint(state);
-  if (fingerprint === lastSyncedFingerprint) {
+  if (!forceFullOverwrite && fingerprint === lastSyncedFingerprint) {
     return;
   }
 
@@ -503,10 +553,11 @@ export async function syncStateToFirebaseNow(state: ERPState): Promise<void> {
       docRef,
       {
         state: cleanState,
+        resetEpoch: FIREBASE_RESET_EPOCH,
         updatedAt: new Date().toISOString(),
         updatedBy: state.currentUser?.name || 'System',
       },
-      { merge: true }
+      { merge: !forceFullOverwrite }
     );
     lastSyncedFingerprint = fingerprint;
   } catch (err: any) {
@@ -521,6 +572,13 @@ export async function syncStateToFirebaseNow(state: ERPState): Promise<void> {
       handleFirestoreError(err, OperationType.WRITE, 'erp_state/main');
     }
   }
+}
+
+/**
+ * Completely wipes Firestore ERP state document and replaces it with a clean slate.
+ */
+export async function wipeFirestoreStateCompletely(cleanState: ERPState): Promise<void> {
+  return syncStateToFirebaseNow(cleanState, true);
 }
 
 /**
@@ -554,6 +612,7 @@ export async function syncStateToFirebase(state: ERPState): Promise<void> {
         docRef,
         {
           state: cleanState,
+          resetEpoch: FIREBASE_RESET_EPOCH,
           updatedAt: new Date().toISOString(),
           updatedBy: state.currentUser?.name || 'System',
         },

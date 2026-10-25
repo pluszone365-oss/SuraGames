@@ -843,19 +843,22 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
         .sort((a, b) => b.time - a.time);
     }
 
+    // If there are zero transactions, don't generate months of inactive day cards
+    if (filtered.length === 0) {
+      return [];
+    }
+
     // Determine start and end date range for the timeline
     const todayStr = new Date().toISOString().slice(0, 10);
     let maxDateStr = filtered[0]?.date ? filtered[0].date.slice(0, 10) : todayStr;
     if (todayStr > maxDateStr) maxDateStr = todayStr;
-    let minDateStr = '2026-07-01';
+    let minDateStr = filtered[filtered.length - 1]?.date ? filtered[filtered.length - 1].date.slice(0, 10) : todayStr;
 
-    if (filtered.length > 0) {
-      filtered.forEach(item => {
-        const d = item.date ? item.date.slice(0, 10) : '';
-        if (d && d > maxDateStr) maxDateStr = d;
-        if (d && d < minDateStr) minDateStr = d;
-      });
-    }
+    filtered.forEach(item => {
+      const d = item.date ? item.date.slice(0, 10) : '';
+      if (d && d > maxDateStr) maxDateStr = d;
+      if (d && d < minDateStr) minDateStr = d;
+    });
 
     const groups: LedgerDateGroup[] = [];
     const curr = new Date(`${maxDateStr}T12:00:00.000Z`);
@@ -1271,10 +1274,20 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       {/* Grouped Transactions List */}
       <div id="tour-transactions-list" data-tour="transactions-list" className="space-y-4">
         {ledgerDateGroups.length === 0 ? (
-          <div className="bg-white dark:bg-[#131926] border border-slate-200 dark:border-[#1E2D40] rounded-2xl p-8 text-center text-slate-500 dark:text-[#8899BB] space-y-2 shadow-sm">
-            <AlertCircle className="w-8 h-8 mx-auto text-slate-300 dark:text-[#8899BB]/50" />
-            <p className="text-xs font-bold text-slate-800 dark:text-[#F0F4FF]">No matching ledger entries</p>
-            <p className="text-[11px]">Try clearing search or filters to see all transactions.</p>
+          <div className="bg-white dark:bg-[#131926] border border-slate-200 dark:border-[#1E2D40] rounded-2xl p-8 text-center text-slate-500 dark:text-[#8899BB] space-y-3 shadow-sm">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-[#00D4AA] flex items-center justify-center mx-auto border border-emerald-500/20">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-800 dark:text-[#F0F4FF]">
+                {transactions.length === 0 ? 'Clean Slate • Ready for New Data' : 'No matching ledger entries'}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-[#8899BB] mt-1 max-w-sm mx-auto">
+                {transactions.length === 0
+                  ? 'All previous transactions and records have been cleared. Click "+ Record" or open Quick Entry to start logging fresh data.'
+                  : 'Try clearing search keywords or active filters to inspect all ledger records.'}
+              </p>
+            </div>
           </div>
         ) : (
           ledgerDateGroups.map((group) => {

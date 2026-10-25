@@ -412,6 +412,12 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
     e.preventDefault();
     setValidationError(null);
 
+    if (wallets.length === 0) {
+      triggerHaptic('heavy');
+      setValidationError('No active business wallets exist. Please add a wallet in the Wallets tab first.');
+      return;
+    }
+
     const txDate = new Date(`${postingDate}T12:00:00.000Z`).toISOString();
 
     // Handling Batch Multi-Wallet Income / Expense Submission
@@ -656,6 +662,19 @@ export const QuickEntryModal: React.FC<QuickEntryModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+
+          {/* Zero Wallets Alert */}
+          {wallets.length === 0 && (
+            <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-xs flex items-start gap-3 text-amber-300">
+              <span className="text-base">💳</span>
+              <div className="flex-1">
+                <p className="font-bold text-amber-200">No Business Wallets Found</p>
+                <p className="text-[11px] text-amber-300/80 mt-0.5">
+                  All previous wallets were removed. Please create a wallet first in the <strong>Wallets</strong> tab before adding transactions.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Validation Error Alert */}
           {validationError && (

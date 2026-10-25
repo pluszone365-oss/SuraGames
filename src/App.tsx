@@ -367,75 +367,9 @@ export default function App() {
     setDismissedNotifIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
   }, []);
 
-  // Active safeguard on mount: Ensure all verified canonical ledger transactions are present and sorted
+  // Active sync on mount: Immediately push pristine clean baseline to Firebase Firestore ({ merge: false })
   useEffect(() => {
-    setState((current) => {
-      const existingIds = new Set(current.transactions.map((t) => t.id));
-      const missingCanonical = DEFAULT_TRANSACTIONS.filter((t) => isCanonicalTransactionId(t.id) && !existingIds.has(t.id));
-
-      let hasReceivableUpdate = false;
-      const updatedReceivables = (current.receivables || []).map(r => {
-        if (r.id === 'rcv-20260923-solomon' && r.status !== 'COLLECTED') {
-          hasReceivableUpdate = true;
-          return { ...r, amountCollected: 180, status: 'COLLECTED' as const };
-        }
-        return r;
-      });
-      if (!updatedReceivables.some(r => r.id === 'rcv-20261002-solomon')) {
-        hasReceivableUpdate = true;
-        updatedReceivables.push({
-          id: 'rcv-20261002-solomon',
-          customerName: 'Solomon',
-          description: "Bale'da credit for Solomon",
-          amountOwed: 300,
-          amountCollected: 0,
-          createdDate: '2026-10-02T19:32:00.000Z',
-          dueDate: '2026-10-16T19:32:00.000Z',
-          status: 'OUTSTANDING',
-          walletId: 'w-cash'
-        });
-      }
-      if (!updatedReceivables.some(r => r.id === 'rcv-20261006-solomon-190')) {
-        hasReceivableUpdate = true;
-        updatedReceivables.push({
-          id: 'rcv-20261006-solomon-190',
-          customerName: 'Solomon',
-          description: "Bale'da credit for Solomon",
-          amountOwed: 190,
-          amountCollected: 0,
-          createdDate: '2026-10-06T08:47:00.000Z',
-          dueDate: '2026-10-20T08:47:00.000Z',
-          status: 'OUTSTANDING',
-          walletId: 'w-cash'
-        });
-      }
-
-      let hasTxSplitUpdate = false;
-      const canonicalMap = new Map(DEFAULT_TRANSACTIONS.map(t => [t.id, t]));
-      const refreshedTxs = current.transactions.map(t => {
-        const canonical = canonicalMap.get(t.id);
-        if (canonical?.splits && canonical.splits.length > 0 && (!t.splits || t.splits.length === 0)) {
-          hasTxSplitUpdate = true;
-          return { ...t, splits: canonical.splits };
-        }
-        return t;
-      });
-
-      if (missingCanonical.length > 0 || hasReceivableUpdate || hasTxSplitUpdate) {
-        const updatedTxs = [...missingCanonical, ...refreshedTxs]
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        const next = {
-          ...current,
-          transactions: updatedTxs,
-          receivables: updatedReceivables,
-          deletedEntityIds: (current.deletedEntityIds || []).filter(id => !isCanonicalTransactionId(id))
-        };
-        saveStateToStorage(next);
-        syncStateToFirebaseNow(next);
-        return next;
-      }
-      return current;
-    });
+    syncStateToFirebaseNow(state, true);
   }, []);
 
   // Real-time Firebase Firestore Subscription & Chat Notifications
@@ -454,9 +388,10 @@ export default function App() {
           const combinedDeletedIds = Array.from(new Set([...localDeletedIds, ...remoteDeletedIds]));
 
           const mergedUsers = mergeListById(prev.users, remoteState.users, combinedDeletedIds);
-          const mergedWallets = mergeListById(prev.wallets, remoteState.wallets, combinedDeletedIds);
+          const mergedWallets = mergeListById(prev.wallets, remoteState.wallets, combinedDeletedIds)
+            .filter((w: Wallet) => !['w-telebirr', 'w-cbe', 'w-ebirr', 'w-cash', 'w-savings'].includes(w.id));
           const mergedTransactions = mergeListById(prev.transactions, remoteState.transactions, combinedDeletedIds)
-            .filter((t: Transaction) => !t.id?.startsWith('tx-20261019') && !t.date?.startsWith('2026-10-19'));
+            .filter((t: Transaction) => !t.id?.startsWith('tx-start-') && !t.id?.startsWith('tx-20261019'));
           const mergedTransfers = mergeListById(prev.transfers, remoteState.transfers, combinedDeletedIds);
           const mergedEqubs = mergeListById(prev.equbs, remoteState.equbs, combinedDeletedIds);
           const mergedLoans = mergeListById(prev.loans, remoteState.loans, combinedDeletedIds);
@@ -764,8 +699,10 @@ export default function App() {
         const combinedDeletedIds = Array.from(new Set([...localDeletedIds, ...remoteDeletedIds]));
 
         const mergedUsers = mergeListById(prev.users, remoteState.users, combinedDeletedIds);
-        const mergedWallets = mergeListById(prev.wallets, remoteState.wallets, combinedDeletedIds);
-        const mergedTransactions = mergeListById(prev.transactions, remoteState.transactions, combinedDeletedIds);
+        const mergedWallets = mergeListById(prev.wallets, remoteState.wallets, combinedDeletedIds)
+          .filter((w: Wallet) => !['w-telebirr', 'w-cbe', 'w-ebirr', 'w-cash', 'w-savings'].includes(w.id));
+        const mergedTransactions = mergeListById(prev.transactions, remoteState.transactions, combinedDeletedIds)
+          .filter((t: Transaction) => !t.id?.startsWith('tx-start-') && !t.id?.startsWith('tx-20261019'));
         const mergedTransfers = mergeListById(prev.transfers, remoteState.transfers, combinedDeletedIds);
         const mergedEqubs = mergeListById(prev.equbs, remoteState.equbs, combinedDeletedIds);
         const mergedLoans = mergeListById(prev.loans, remoteState.loans, combinedDeletedIds);
@@ -2700,8 +2637,13 @@ export default function App() {
     performRefresh(true);
   };
 
-  const handleResetAllData = () => {
-    localStorage.clear();
+  const handleResetAllData = async () => {
+    try {
+      const { createInitialState } = await import('./lib/store');
+      const clean = createInitialState();
+      await syncStateToFirebaseNow(clean, true);
+      localStorage.clear();
+    } catch (_) {}
     window.location.reload();
   };
 

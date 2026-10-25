@@ -31,7 +31,7 @@ import { calculateNextEthiopianDueDate } from './ethiopianCalendar';
 export type { ERPState } from '../types';
 export { isPersonalExpense, resolveExpenseScope, normalizeTransactionScopes };
 
-const STORAGE_KEY = 'pluszone_fin_erp_state_v60_suraphel_start_today_2026_10_24';
+const STORAGE_KEY = 'pluszone_fin_erp_state_v65_pure_clean_slate_all_data_removed_2026_10_25';
 
 /**
  * Validates whether a transaction ID belongs to the immutable canonical business ledger.
@@ -60,29 +60,7 @@ export const DEFAULT_AUTOMATED_EMAIL_REPORTS: AutomatedEmailReportsSettings = {
   lastSentTimestamp: ''
 };
 
-export const DEFAULT_SENT_REPORT_LOGS: SentReportEmailLog[] = [
-  {
-    id: 'rpt-init-1',
-    period: 'October 2026',
-    sentAt: '2026-10-24T08:00:00.000Z',
-    recipients: [
-      { email: 'suraphel@pluszone.et', name: 'Suraphel', role: 'SuperAdmin' }
-    ],
-    status: 'DELIVERED',
-    subject: '[PlusZone ERP] Initialized Financial Statement & Banking Report - October 2026',
-    triggerType: 'AUTOMATIC_SCHEDULE',
-    summary: {
-      totalBalance: 12455,
-      monthlyIncome: 12455,
-      monthlyExpense: 0,
-      netProfit: 12455,
-      activeWalletsCount: 4,
-      outstandingReceivables: 0,
-      outstandingLoans: 0,
-      equbVolume: 0
-    }
-  }
-];
+export const DEFAULT_SENT_REPORT_LOGS: SentReportEmailLog[] = [];
 
 const DEFAULT_CHAT_CHANNELS: ChatChannel[] = [
   {
@@ -132,83 +110,7 @@ const DEFAULT_USERS: UserProfile[] = [
   }
 ];
 
-const DEFAULT_WALLETS: Wallet[] = [
-  {
-    id: 'w-telebirr',
-    name: 'Telebirr',
-    type: 'TELEBIRR',
-    accountNumber: '0989367877 (acc-1782999486323-1)',
-    openingBalance: 3020,
-    totalIn: 0,
-    totalOut: 0,
-    color: '#0EA5E9', // Light Blue background
-    iconName: 'Smartphone',
-    isDefault: false,
-    status: 'ACTIVE',
-    isCreditAccount: false,
-    allowOverdraft: false
-  },
-  {
-    id: 'w-cbe',
-    name: 'CBE',
-    type: 'CBE_BANK',
-    accountNumber: '1000751694559', // CBE Account requested
-    openingBalance: 3400,
-    totalIn: 0,
-    totalOut: 0,
-    color: '#8B5CF6', // Purple background
-    iconName: 'Building2',
-    isDefault: false,
-    status: 'ACTIVE',
-    isCreditAccount: false,
-    allowOverdraft: false
-  },
-  {
-    id: 'w-ebirr',
-    name: 'eBirr',
-    type: 'EBIRR',
-    accountNumber: 'EB-998877',
-    openingBalance: 330,
-    totalIn: 0,
-    totalOut: 0,
-    color: '#10B981', // Green background
-    iconName: 'CreditCard',
-    isDefault: false,
-    status: 'ACTIVE',
-    isCreditAccount: false,
-    allowOverdraft: false
-  },
-  {
-    id: 'w-cash',
-    name: 'Cash',
-    type: 'CASH',
-    accountNumber: 'CASH-VAULT-01',
-    openingBalance: 5705,
-    totalIn: 0,
-    totalOut: 0,
-    color: '#F97316', // Orange background
-    iconName: 'Banknote',
-    isDefault: true,
-    status: 'ACTIVE',
-    isCreditAccount: false,
-    allowOverdraft: false
-  },
-  {
-    id: 'w-savings',
-    name: 'Saving wallet',
-    type: 'SAVINGS',
-    accountNumber: 'SAVING-01',
-    openingBalance: 0,
-    totalIn: 0,
-    totalOut: 0,
-    color: '#3B82F6', // Blue background
-    iconName: 'Vault',
-    isDefault: false,
-    status: 'ACTIVE',
-    isCreditAccount: false,
-    allowOverdraft: false
-  }
-];
+const DEFAULT_WALLETS: Wallet[] = [];
 
 const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-0', name: 'Daily Income', type: 'INCOME', icon: 'TrendingUp', color: '#10B981', active: true },
@@ -239,219 +141,12 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-bal-adj', name: 'Balance Correction', type: 'EXPENSE', icon: 'Sliders', color: '#6366F1', active: true }
 ];
 
-export const DEFAULT_TRANSACTIONS: Transaction[] = [
-  {
-    id: 'tx-start-cash',
-    date: '2026-10-24T08:00:00.000Z',
-    type: 'INCOME',
-    category: 'Opening Balance',
-    amount: 5705,
-    walletId: 'w-cash',
-    description: 'Cash Vault Opening Balance on Start Date',
-    creatorName: 'Suraphel',
-    creatorId: 'u-1'
-  },
-  {
-    id: 'tx-start-telebirr',
-    date: '2026-10-24T08:00:00.000Z',
-    type: 'INCOME',
-    category: 'Opening Balance',
-    amount: 3020,
-    walletId: 'w-telebirr',
-    description: 'Telebirr Account Opening Balance on Start Date',
-    creatorName: 'Suraphel',
-    creatorId: 'u-1'
-  },
-  {
-    id: 'tx-start-cbe',
-    date: '2026-10-24T08:00:00.000Z',
-    type: 'INCOME',
-    category: 'Opening Balance',
-    amount: 3400,
-    walletId: 'w-cbe',
-    description: 'CBE Bank Account Opening Balance on Start Date',
-    creatorName: 'Suraphel',
-    creatorId: 'u-1'
-  },
-  {
-    id: 'tx-start-ebirr',
-    date: '2026-10-24T08:00:00.000Z',
-    type: 'INCOME',
-    category: 'Opening Balance',
-    amount: 330,
-    walletId: 'w-ebirr',
-    description: 'eBirr Account Opening Balance on Start Date',
-    creatorName: 'Suraphel',
-    creatorId: 'u-1'
-  }
-];
-
-const DEFAULT_EQUBS: Equb[] = [
-  {
-    id: 'eq-agerye',
-    name: 'Agerye',
-    members: [{ id: 'm-1', name: 'Suraphel', isWinner: false, wonRound: 0 }],
-    contributionPerRound: 5000,
-    mySlots: 1,
-    interval: 'EVERY_10_DAYS',
-    currentRound: 1,
-    completedRounds: 0,
-    totalRounds: 27,
-    startDate: '2026-10-24T00:00:00.000Z',
-    computedEndingDate: '2027-07-20T00:00:00.000Z',
-    status: 'ACTIVE',
-    isOverdue: false,
-    walletId: 'w-cash',
-    payoutsClaimed: 0
-  },
-  {
-    id: 'eq-leli-2',
-    name: 'Leli ekub 2',
-    members: [{ id: 'm-1', name: 'Suraphel', isWinner: false, wonRound: 0 }],
-    contributionPerRound: 10000,
-    mySlots: 1,
-    interval: 'EVERY_10_DAYS',
-    currentRound: 1,
-    completedRounds: 0,
-    totalRounds: 6,
-    startDate: '2026-10-24T00:00:00.000Z',
-    computedEndingDate: '2026-12-24T00:00:00.000Z',
-    status: 'ACTIVE',
-    isOverdue: false,
-    walletId: 'w-cash',
-    payoutsClaimed: 0
-  }
-];
+export const DEFAULT_TRANSACTIONS: Transaction[] = [];
+const DEFAULT_EQUBS: Equb[] = [];
 const DEFAULT_LOANS: Loan[] = [];
-const DEFAULT_ASSETS: Asset[] = [
-  {
-    id: 'asset-ps4-pro',
-    name: 'PS4 Pro Gaming Console',
-    category: 'Equipment / Asset',
-    purchaseDate: '2026-10-24T00:00:00.000Z',
-    purchasePrice: 49500,
-    currentValue: 49500,
-    salvageValue: 15000,
-    usefulLifeYears: 4,
-    depreciationMethod: 'STRAIGHT_LINE',
-    fundingWalletId: 'w-cash',
-    status: 'ACTIVE'
-  }
-];
+const DEFAULT_ASSETS: Asset[] = [];
 const DEFAULT_GOALS: Goal[] = [];
-export const DEFAULT_RECURRING: RecurringTemplate[] = [
-  {
-    id: 'rec-internet-monthly',
-    title: 'Internet & Fiber Subscription',
-    amount: 1010,
-    type: 'EXPENSE',
-    category: 'Utilities & Internet',
-    walletId: 'w-telebirr',
-    frequency: 'MONTHLY',
-    nextDueDate: '2026-11-01T00:00:00.000Z',
-    autoProcess: false,
-    status: 'ACTIVE',
-    notes: 'ETB 1,010 monthly internet fee. Manual confirmation required.'
-  },
-  {
-    id: 'rec-electricity-3w',
-    title: 'Electricity Prepaid Units (3-4 Weeks)',
-    amount: 2050,
-    type: 'EXPENSE',
-    category: 'Utilities & Internet',
-    walletId: 'w-telebirr',
-    frequency: 'EVERY_3_WEEKS',
-    nextDueDate: '2026-11-14T00:00:00.000Z',
-    autoProcess: false,
-    status: 'ACTIVE',
-    notes: 'ETB 2,050 electricity unit refill every 3 to 4 weeks. Manual confirmation required.'
-  },
-  {
-    id: 'rec-water-2m',
-    title: 'Municipal Water Utility (Bi-Monthly)',
-    amount: 450,
-    type: 'EXPENSE',
-    category: 'Utilities & Internet',
-    walletId: 'w-telebirr',
-    frequency: 'EVERY_2_MONTHS',
-    nextDueDate: '2026-11-24T00:00:00.000Z',
-    autoProcess: false,
-    status: 'ACTIVE',
-    notes: 'Municipal water bill payable every 2 months. Manual confirmation required.'
-  },
-  {
-    id: 'rec-police-2m',
-    title: 'Community Police & Security Dues (Bi-Monthly)',
-    amount: 500,
-    type: 'EXPENSE',
-    category: 'Rent & Lease',
-    walletId: 'w-cash',
-    frequency: 'EVERY_2_MONTHS',
-    nextDueDate: '2026-09-20T00:00:00.000Z',
-    autoProcess: false,
-    status: 'ACTIVE',
-    notes: 'Community security & police contribution every 2 months. Manual confirmation required.'
-  },
-  {
-    id: 'rec-transport-p1',
-    title: 'Staff Transport - Person 1 (Early Month)',
-    amount: 1000,
-    type: 'EXPENSE',
-    category: 'Payroll & Wages',
-    walletId: 'w-telebirr',
-    frequency: 'MONTHLY',
-    nextDueDate: '2026-09-05T00:00:00.000Z',
-    autoProcess: false,
-    status: 'ACTIVE',
-    beneficiary: 'Person 1',
-    notes: 'Staff transport allowance for Person 1 (ETB 1,000 on 5th of month). Manual confirmation required.'
-  },
-  {
-    id: 'rec-transport-p2',
-    title: 'Staff Transport - Person 2 (Mid Month)',
-    amount: 1000,
-    type: 'EXPENSE',
-    category: 'Payroll & Wages',
-    walletId: 'w-telebirr',
-    frequency: 'MONTHLY',
-    nextDueDate: '2026-09-15T00:00:00.000Z',
-    autoProcess: false,
-    status: 'ACTIVE',
-    beneficiary: 'Person 2',
-    notes: 'Staff transport allowance for Person 2 (ETB 1,000 on 15th of month). Manual confirmation required.'
-  },
-  {
-    id: 'rec-transport-p3',
-    title: 'Staff Transport - Person 3 (End Month)',
-    amount: 1000,
-    type: 'EXPENSE',
-    category: 'Payroll & Wages',
-    walletId: 'w-telebirr',
-    frequency: 'MONTHLY',
-    nextDueDate: '2026-09-25T00:00:00.000Z',
-    autoProcess: false,
-    status: 'ACTIVE',
-    beneficiary: 'Person 3',
-    notes: 'Staff transport allowance for Person 3 (ETB 1,000 on 25th of month). Manual confirmation required.'
-  },
-  {
-    id: 'rec-rent-shop',
-    title: 'Commercial Space / Shop Rent',
-    amount: 23000,
-    type: 'EXPENSE',
-    category: 'Rent & Lease',
-    walletId: 'w-cash',
-    frequency: 'ONE_TIME',
-    nextDueDate: '2026-12-10T00:00:00.000Z',
-    prepaidUntilDate: '2026-12-10T00:00:00.000Z',
-    lastProcessedDate: '2026-09-10T09:30:00.000Z',
-    autoProcess: false,
-    status: 'ACTIVE',
-    isOneTime: true,
-    advanceMonthsPrepaid: 3,
-    notes: 'Commercial shop rent ETB 23,000/mo. Paid 69,000 in advance on Sep 10 as a one-time upfront payment (prepaid until Dec 10, 2026).'
-  }
-];
+export const DEFAULT_RECURRING: RecurringTemplate[] = [];
 const DEFAULT_RECEIVABLES: Receivable[] = [];
 
 export const DEFAULT_SHOP_HOURS: ShopOperatingHours = {
@@ -501,6 +196,9 @@ export function loadInitialState(): ERPState {
   try {
     // Actively purge obsolete localStorage keys so stale cached transactions never linger
     const obsoleteKeys = [
+      'pluszone_fin_erp_state_v63_zero_wallets_zero_txs_2026_10_25',
+      'pluszone_fin_erp_state_v64_fresh_start_all_data_removed',
+      'pluszone_fin_erp_state_v60_suraphel_start_today_2026_10_24',
       'pluszone_fin_erp_state_v51_oct12_dynamic_equb_trajectory',
       'pluszone_fin_erp_state_v50_oct11_wallet_balance_corrections',
       'pluszone_fin_erp_state_v49_oct11_verified_sales_and_rcvs',
@@ -529,180 +227,27 @@ export function loadInitialState(): ERPState {
         parsed.users = DEFAULT_USERS;
         parsed.currentUser = DEFAULT_USERS[0];
         parsed.chatMessages = [];
-
-        parsed.equbs = DEFAULT_EQUBS;
-        parsed.loans = DEFAULT_LOANS;
-        parsed.assets = DEFAULT_ASSETS;
+        parsed.equbs = [];
+        parsed.loans = [];
+        parsed.assets = [];
         parsed.receivables = [];
-        const priorTxs = Array.isArray(parsed.transactions) ? parsed.transactions : [];
-        const todayTxs = priorTxs.filter((t: Transaction) => t && t.date && t.date >= '2026-10-24');
-        parsed.transactions = todayTxs.length > 0 ? todayTxs : DEFAULT_TRANSACTIONS;
-        parsed.transfers = Array.isArray(parsed.transfers)
-          ? parsed.transfers.filter((tr: Transfer) => tr && tr.date && tr.date >= '2026-10-24')
-          : [];
+        parsed.transactions = [];
+        parsed.transfers = [];
+        parsed.wallets = [];
+        parsed.recurring = [];
+        parsed.goals = [];
         parsed.deletedEntityIds = [];
-        parsed.transactions = consolidateEqubSplitTransactions(parsed.transactions, parsed.wallets || DEFAULT_WALLETS);
-        // Enforce wallet brand colors & CBE account number update
-        let currentWallets: Wallet[] = Array.isArray(parsed.wallets) && parsed.wallets.length > 0 ? parsed.wallets : DEFAULT_WALLETS;
-        
-        // Ensure default 4 wallets exist and are formatted
-        const defaultMap = new Map(DEFAULT_WALLETS.map(w => [w.type, w]));
-        
-        currentWallets = currentWallets.map(w => {
-          const status = w.status || (w.isArchived ? 'ARCHIVED' : w.isDisabled ? 'DISABLED' : 'ACTIVE');
-          const isCredit = w.isCreditAccount === true || w.type === 'CREDIT_LINE' || w.type === 'LOAN';
-          if (w.type === 'CBE_BANK') {
-            return {
-              ...w,
-              name: 'CBE',
-              accountNumber: w.accountNumber && w.accountNumber !== '1000123456789' ? w.accountNumber : '1000751694559',
-              color: '#8B5CF6', // Purple
-              status,
-              isCreditAccount: isCredit,
-              allowOverdraft: w.allowOverdraft ?? isCredit
-            };
-          }
-          if (w.type === 'CASH') {
-            return {
-              ...w,
-              name: 'Cash',
-              color: '#F97316',
-              status,
-              isCreditAccount: isCredit,
-              allowOverdraft: w.allowOverdraft ?? isCredit
-            };
-          }
-          if (w.type === 'TELEBIRR') {
-            return {
-              ...w,
-              name: 'Telebirr',
-              accountNumber: w.accountNumber && w.accountNumber.includes('acc-1782999486323-1') ? w.accountNumber : '0989367877 (acc-1782999486323-1)',
-              color: '#0EA5E9',
-              status,
-              isCreditAccount: isCredit,
-              allowOverdraft: w.allowOverdraft ?? isCredit
-            };
-          }
-          if (w.type === 'EBIRR') {
-            return {
-              ...w,
-              name: 'eBirr',
-              color: '#10B981',
-              status,
-              isCreditAccount: isCredit,
-              allowOverdraft: w.allowOverdraft ?? isCredit
-            };
-          }
-          if (w.type === 'SAVINGS' || w.id === 'w-savings') {
-            return {
-              ...w,
-              name: 'Saving wallet',
-              color: '#3B82F6',
-              status,
-              isCreditAccount: isCredit,
-              allowOverdraft: w.allowOverdraft ?? isCredit
-            };
-          }
-          return {
-            ...w,
-            status,
-            isCreditAccount: isCredit,
-            allowOverdraft: w.allowOverdraft ?? isCredit
-          };
-        });
-
-        // Add missing default types if not present
-        DEFAULT_WALLETS.forEach(def => {
-          if (!currentWallets.some(w => w.id === def.id || w.type === def.type)) {
-            currentWallets.push(def);
-          }
-        });
-
-        parsed.wallets = currentWallets;
         parsed.categories = Array.isArray(parsed.categories) && parsed.categories.length > 0 ? parsed.categories : DEFAULT_CATEGORIES;
-        if (!parsed.categories.some((c: Category) => c.name === 'Community & Security')) {
-          parsed.categories.push({ id: 'cat-sec', name: 'Community & Security', type: 'EXPENSE', icon: 'Shield', color: '#3B82F6', active: true });
-        }
-        if (!parsed.categories.some((c: Category) => c.name === 'Purchase')) {
-          parsed.categories.push({ id: 'cat-purchase', name: 'Purchase', type: 'EXPENSE', icon: 'ShoppingBag', color: '#0EA5E9', active: true });
-        }
-        if (!parsed.categories.some((c: Category) => c.name === 'Rent')) {
-          parsed.categories.push({ id: 'cat-rent', name: 'Rent', type: 'EXPENSE', icon: 'Home', color: '#E11D48', active: true });
-        }
-        if (!parsed.categories.some((c: Category) => c.name === 'Equb Payout')) {
-          parsed.categories.push({ id: 'cat-equb-payout', name: 'Equb Payout', type: 'INCOME', icon: 'Award', color: '#10B981', active: true });
-        }
-        
-        // Ensure default recurring schedules exist if empty or missing, filtering out removed rent
-        let currentRecurring: RecurringTemplate[] = Array.isArray(parsed.recurring) ? parsed.recurring : [];
-        currentRecurring = currentRecurring.filter(r => r.id !== 'rec-rent-quarterly' && !r.title.toLowerCase().includes('commercial lounge rent'));
-        if (currentRecurring.length === 0) {
-          currentRecurring = [...DEFAULT_RECURRING];
-        } else {
-          const deletedIds = Array.isArray(parsed.deletedEntityIds) ? parsed.deletedEntityIds : [];
-          DEFAULT_RECURRING.forEach(def => {
-            if (!currentRecurring.some(r => r.id === def.id) && !deletedIds.includes(def.id)) {
-              currentRecurring.push(def);
-            }
-          });
-        }
-        // Ensure rec-rent-shop is correctly marked as ONE-TIME advance payment
-        const shopRentIdx = currentRecurring.findIndex(r => r.id === 'rec-rent-shop');
-        if (shopRentIdx !== -1) {
-          currentRecurring[shopRentIdx] = {
-            ...currentRecurring[shopRentIdx],
-            frequency: 'ONE_TIME',
-            isOneTime: true,
-            advanceMonthsPrepaid: 3,
-            prepaidUntilDate: '2026-12-10T00:00:00.000Z',
-            notes: 'Commercial shop rent ETB 23,000/mo. Paid 69,000 in advance on Sep 10 as a one-time upfront payment (prepaid until Dec 10, 2026).'
-          };
-        }
-        parsed.recurring = currentRecurring;
-        parsed.transfers = Array.isArray(parsed.transfers) ? parsed.transfers : [];
-        parsed.goals = Array.isArray(parsed.goals) ? parsed.goals : DEFAULT_GOALS;
-        parsed.auditLogs = Array.isArray(parsed.auditLogs) ? parsed.auditLogs : DEFAULT_AUDIT_LOGS;
-        // Ensure single Digital Money Manager user is set
-        const managerUser = parsed.users.find((u: UserProfile) => u.isDigitalMoneyManager);
-        if (!managerUser && parsed.users.length > 0) {
-          parsed.users[0].isDigitalMoneyManager = true;
-          parsed.digitalMoneyManagerUserId = parsed.users[0].id;
-        } else if (managerUser) {
-          parsed.digitalMoneyManagerUserId = managerUser.id;
-        }
-
-        parsed.autoImportSettings = parsed.autoImportSettings || {
-          enabled: true,
-          importMethod: 'BOTH',
-          selectedProvider: 'ALL',
-          autoCategorize: true,
-          notifyOnNewPending: true
-        };
-
-        parsed.pendingReviewTransactions = Array.isArray(parsed.pendingReviewTransactions)
-          ? parsed.pendingReviewTransactions
-          : [];
-
-        parsed.chatChannels = Array.isArray(parsed.chatChannels) && parsed.chatChannels.length > 0 ? parsed.chatChannels : DEFAULT_CHAT_CHANNELS;
-        let loadedChatMessages = Array.isArray(parsed.chatMessages) && parsed.chatMessages.length > 0 ? parsed.chatMessages : DEFAULT_CHAT_MESSAGES;
-        // Purge legacy sample approval request from chat
-        loadedChatMessages = loadedChatMessages.filter((m: ChatMessage) => m.id !== 'msg-welcome-2' && m.reference?.id !== 'req-sample-1');
-        parsed.chatMessages = loadedChatMessages;
-        parsed.automatedEmailReportsSettings = parsed.automatedEmailReportsSettings || DEFAULT_AUTOMATED_EMAIL_REPORTS;
-        parsed.sentReportEmailLogs = Array.isArray(parsed.sentReportEmailLogs) && parsed.sentReportEmailLogs.length > 0 ? parsed.sentReportEmailLogs : DEFAULT_SENT_REPORT_LOGS;
-        parsed.deletedEntityIds = Array.isArray(parsed.deletedEntityIds) ? parsed.deletedEntityIds : [];
-
-        // Ensure users list is populated without any legacy sample accounts
-        const sampleUserIds = new Set(['u-2', 'u-3', 'u-4']);
-        const sampleEmails = new Set(['kirubel@pluszone.com', 'bethelhem@pluszone.com', 'dagmawi@pluszone.com']);
-
-        parsed.users = DEFAULT_USERS;
-        parsed.currentUser = DEFAULT_USERS[0];
+        parsed.auditLogs = [];
+        parsed.pendingReviewTransactions = [];
+        parsed.approvalRequests = [];
+        parsed.chatChannels = DEFAULT_CHAT_CHANNELS;
+        parsed.automatedEmailReportsSettings = DEFAULT_AUTOMATED_EMAIL_REPORTS;
+        parsed.sentReportEmailLogs = [];
         if (!parsed.shopHours || !parsed.shopHours.openTimeGMT) {
           parsed.shopHours = DEFAULT_SHOP_HOURS;
         }
-        const userExplicitCal = typeof window !== 'undefined' ? (localStorage.getItem('pluszone_calendar_user_choice') as 'ETHIOPIAN' | 'GREGORIAN' | null) : null;
-        parsed.calendarType = userExplicitCal || (parsed.calendarType === 'ETHIOPIAN' && !userExplicitCal ? 'GREGORIAN' : parsed.calendarType) || 'GREGORIAN';
+        parsed.calendarType = 'GREGORIAN';
         return parsed;
       }
     }
@@ -714,30 +259,30 @@ export function loadInitialState(): ERPState {
   return state;
 }
 
-function createInitialState(): ERPState {
+export function createInitialState(): ERPState {
   return {
     currentUser: DEFAULT_USERS[0],
     users: DEFAULT_USERS,
-    wallets: DEFAULT_WALLETS,
-    transactions: consolidateEqubSplitTransactions(DEFAULT_TRANSACTIONS, DEFAULT_WALLETS),
+    wallets: [],
+    transactions: [],
     transfers: [],
-    equbs: DEFAULT_EQUBS,
-    loans: DEFAULT_LOANS,
-    assets: DEFAULT_ASSETS,
-    goals: DEFAULT_GOALS,
-    recurring: DEFAULT_RECURRING,
+    equbs: [],
+    loans: [],
+    assets: [],
+    goals: [],
+    recurring: [],
     receivables: [],
     categories: DEFAULT_CATEGORIES,
     auditLogs: [
       {
         id: 'aud-init-today',
-        timestamp: '2026-10-24T08:00:00.000Z',
+        timestamp: new Date().toISOString(),
         actorId: 'u-1',
         actorName: 'Suraphel',
         action: 'SYSTEM_START',
         entity: 'System',
         entityId: 'genesis',
-        diffAfter: { status: 'Lounge ERP Initialized for Suraphel on 2026-10-24' },
+        diffAfter: { status: 'Lounge ERP Initialized for Suraphel - Zero Wallets & Zero Transactions Clean Baseline' },
         branch: 'Addis Ababa HQ'
       }
     ],
@@ -752,9 +297,9 @@ function createInitialState(): ERPState {
     },
     pendingReviewTransactions: [],
     chatChannels: DEFAULT_CHAT_CHANNELS,
-    chatMessages: DEFAULT_CHAT_MESSAGES,
+    chatMessages: [],
     automatedEmailReportsSettings: DEFAULT_AUTOMATED_EMAIL_REPORTS,
-    sentReportEmailLogs: DEFAULT_SENT_REPORT_LOGS,
+    sentReportEmailLogs: [],
     deletedEntityIds: [],
     shopHours: DEFAULT_SHOP_HOURS,
     theme: 'dark',
@@ -775,6 +320,20 @@ export function saveStateToStorage(state: ERPState) {
       console.error('Failed to save ERP state:', e);
     }
   }
+}
+
+/**
+ * Hard-resets the entire local data repository to the clean baseline.
+ */
+export function resetEntireSystemToCleanSlate(): ERPState {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.clear();
+    } catch (_) {}
+  }
+  const clean = createInitialState();
+  saveStateToStorage(clean);
+  return clean;
 }
 
 /**

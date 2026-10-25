@@ -739,6 +739,32 @@ export const WalletsView: React.FC<WalletsViewProps> = ({
 
       {/* Wallet Cards Grid with Custom Color Styling */}
       <div id="tour-wallets-grid" data-tour="wallets-grid" className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {filteredWallets.length === 0 && (
+          <div className="col-span-full py-12 px-6 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 text-center flex flex-col items-center justify-center gap-3">
+            <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+              <WalletIcon className="w-7 h-7" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">No Business Wallets Yet</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mt-1">
+                All old wallets and balances have been removed. Add your first payment channel (Cash Vault, Telebirr, CBE Bank, or eBirr) to begin recording business income starting today.
+              </p>
+            </div>
+            {(currentUser.role === 'SuperAdmin' || currentUser.role === 'Admin') && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('medium');
+                  setShowAddModal(true);
+                }}
+                className="mt-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/20 active:scale-95 transition-all cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create First Wallet</span>
+              </button>
+            )}
+          </div>
+        )}
         {filteredWallets.map((w, index) => {
           const bal = calculateWalletBalance(w, transactions, transfers);
           const isSelected = w.id === selectedWalletId;

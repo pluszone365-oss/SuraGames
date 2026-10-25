@@ -849,18 +849,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="divide-y divide-slate-100 dark:divide-[#1C2638] border border-slate-100 dark:border-[#1C2638] rounded-xl overflow-hidden bg-slate-50/50 dark:bg-[#151C2A]">
-          {(() => {
-            const canonicalOrder = ['TELEBIRR', 'CBE_BANK', 'EBIRR', 'CASH', 'SAVINGS'];
-            const sortedWallets = [...wallets].sort((a, b) => {
-              const idxA = canonicalOrder.indexOf(a.type);
-              const idxB = canonicalOrder.indexOf(b.type);
-              if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-              if (idxA !== -1) return -1;
-              if (idxB !== -1) return 1;
-              return a.name.localeCompare(b.name);
-            });
-            return sortedWallets;
-          })().map((w) => {
+          {wallets.length === 0 ? (
+            <div className="p-6 text-center flex flex-col items-center justify-center gap-2">
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-200">No Business Wallets Available</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">All previous wallets were removed. Add your first payment channel to track liquid capital.</p>
+              <button
+                type="button"
+                onClick={() => onNavigateTab('wallets')}
+                className="mt-1 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-[#00D4AA] border border-emerald-500/30 text-xs font-bold hover:bg-emerald-500/25 transition-all cursor-pointer"
+              >
+                + Add Business Wallet
+              </button>
+            </div>
+          ) : (
+            (() => {
+              const canonicalOrder = ['TELEBIRR', 'CBE_BANK', 'EBIRR', 'CASH', 'SAVINGS'];
+              const sortedWallets = [...wallets].sort((a, b) => {
+                const idxA = canonicalOrder.indexOf(a.type);
+                const idxB = canonicalOrder.indexOf(b.type);
+                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                if (idxA !== -1) return -1;
+                if (idxB !== -1) return 1;
+                return a.name.localeCompare(b.name);
+              });
+              return sortedWallets;
+            })().map((w) => {
             const bal = calculateWalletBalance(w, transactions, transfers);
             const percent = totalBalance > 0 ? Math.min(100, Math.round((bal / totalBalance) * 100)) : 0;
             const nickname = getWalletNickname(w.name);
@@ -927,7 +940,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </div>
             );
-          })}
+          })
+        )}
         </div>
       </div>
 

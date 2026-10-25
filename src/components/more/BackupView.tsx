@@ -98,9 +98,15 @@ export const BackupView: React.FC<BackupViewProps> = ({ state, onRestore }) => {
 
   const [showResetModal, setShowResetModal] = useState(false);
 
-  const confirmResetDemo = () => {
+  const confirmResetDemo = async () => {
     triggerHaptic('warning');
-    localStorage.clear();
+    try {
+      const { createInitialState } = await import('../../lib/store');
+      const { syncStateToFirebaseNow } = await import('../../lib/firebase');
+      const clean = createInitialState();
+      await syncStateToFirebaseNow(clean, true);
+      localStorage.clear();
+    } catch (_) {}
     window.location.reload();
   };
 
