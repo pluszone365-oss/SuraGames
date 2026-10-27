@@ -6,21 +6,22 @@ import {
   EyeOff,
   ArrowRight,
   ShieldCheck,
-  Sparkles,
   AlertCircle,
-  Gamepad2,
-  UserPlus,
   LogIn,
   KeyRound,
   CheckCircle2,
-  Calendar,
-  Clock
+  Clock,
+  Send,
+  X,
+  Building,
+  HelpCircle
 } from 'lucide-react';
 import { UserProfile, UserRole } from '../../types';
 import { triggerHaptic } from '../../lib/haptics';
 import { AppLogo } from '../common/AppLogo';
 import { getRememberSessionPreference, getRememberedUsername } from '../../lib/authSession';
-import { hashPassword, verifyPassword, DEFAULT_ROLE_PERMISSIONS } from '../../lib/auth';
+import { hashPassword, verifyPassword } from '../../lib/auth';
+import { firebaseSignIn, firebaseSendPasswordReset } from '../../lib/firebase';
 
 interface LoginPageProps {
   allUsers: UserProfile[];
@@ -33,47 +34,71 @@ interface LoginPageProps {
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_SECONDS = 60;
-const TODAY_START_DATE = '2026-10-24';
 
 export const LoginPage: React.FC<LoginPageProps> = ({
   allUsers,
-  onLogin,
-  onRegisterUser
+  onLogin
 }) => {
-  // Locate the primary SuperAdmin (Suraphel)
-  const superAdmin = allUsers.find(u => u.name === 'Suraphel' || u.username === 'suraphel' || u.role === 'SuperAdmin') || allUsers[0];
-
-  const [activeTab, setActiveTab] = useState<'signin' | 'register'>('signin');
-
-  // Sign In State
-  const [username, setUsername] = useState<string>(() => getRememberedUsername() || superAdmin?.username || 'suraphel');
-  const [password, setPassword] = useState<string>('password123');
+  // Credentials input state - never prefill passwords
+  const [identifier, setIdentifier] = useState<string>(() => getRememberedUsername() || '');
+  const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [rememberMe, setRememberMe] = useState<boolean>(() => getRememberSessionPreference());
+
+  // Form states
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Security Rate Limiting & Lockout
-  const [failedAttempts, setFailedAttempts] = useState<number>(0);
-  const [lockoutRemaining, setLockoutRemaining] = useState<number>(0);
+  const [failedAttempts, setFailedAttempts] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem('pz_login_failed_attempts');
+      return stored ? parseInt(stored, 10) : 0;
+    } catch {
+      return 0;
+    }
+  });
 
-  // Registration State (starts from today)
-  const [regFullName, setRegFullName] = useState<string>('');
-  const [regUsername, setRegUsername] = useState<string>('');
-  const [regEmail, setRegEmail] = useState<string>('');
-  const [regRole, setRegRole] = useState<UserRole>('Partner');
-  const [regPassword, setRegPassword] = useState<string>('');
-  const [regConfirmPassword, setRegConfirmPassword] = useState<string>('');
-  const [regShowPassword, setRegShowPassword] = useState<boolean>(false);
+  const [lockoutRemaining, setLockoutRemaining] = useState<number>(() => {
+    try {
+      const lockUntil = localStorage.getItem('pz_login_lockout_until');
+      if (lockUntil) {
+        const remaining = Math.ceil((parseInt(lockUntil, 10) - Date.now()) / 1000);
+        return remaining > 0 ? remaining : 0;
+      }
+    } catch {}
+    return 0;
+  });
 
-  // Lockout countdown timer effect
+  // Modals
+  const [showForgotModal, setShowForgotModal] = useState<boolean>(false);
+  const [forgotEmail, setForgotEmail] = useState<string>('');
+  const [forgotSubmitting, setForgotSubmitting] = useState<boolean>(false);
+  const [forgotSuccessMsg, setForgotSuccessMsg] = useState<string | null>(null);
+  const [forgotErrorMsg, setForgotErrorMsg] = useState<string | null>(null);
+
+  const [showRequestAccessModal, setShowRequestAccessModal] = useState<boolean>(false);
+  const [reqFullName, setReqFullName] = useState<string>('');
+  const [reqEmail, setReqEmail] = useState<string>('');
+  const [reqRole, setReqRole] = useState<UserRole>('Staff');
+  const [reqBranch, setReqBranch] = useState<string>('Addis Ababa HQ');
+  const [reqReason, setReqReason] = useState<string>('');
+  const [reqSubmitting, setReqSubmitting] = useState<boolean>(false);
+  const [reqSuccessMsg, setReqSuccessMsg] = useState<string | null>(null);
+  const [reqErrorMsg, setReqErrorMsg] = useState<string | null>(null);
+
+  // Lockout countdown timer
   useEffect(() => {
     if (lockoutRemaining <= 0) return;
     const interval = setInterval(() => {
-      setLockoutRemaining(prev => {
+      setLockoutRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
+          try {
+            localStorage.removeItem('pz_login_lockout_until');
+            localStorage.setItem('pz_login_failed_attempts', '0');
+          } catch {}
           setFailedAttempts(0);
           return 0;
         }
@@ -83,105 +108,34 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     return () => clearInterval(interval);
   }, [lockoutRemaining]);
 
-  const handlePerformLogin = (targetUser: UserProfile) => {
-    setIsSubmitting(true);
-    triggerHaptic('medium');
-    setTimeout(() => {
-      onLogin(targetUser, rememberMe);
-      setIsSubmitting(false);
-    }, 250);
+  const handleApplyLockout = () => {
+    const lockUntil = Date.now() + LOCKOUT_SECONDS * 1000;
+    try {
+      localStorage.setItem('pz_login_lockout_until', lockUntil.toString());
+      localStorage.setItem('pz_login_failed_attempts', String(MAX_FAILED_ATTEMPTS));
+    } catch {}
+    setLockoutRemaining(LOCKOUT_SECONDS);
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (lockoutRemaining > 0) return;
+    if (lockoutRemaining > 0 || isSubmitting) return;
 
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    const inputUser = username.trim().toLowerCase();
-    const inputPass = password.trim();
+    const cleanIdentifier = identifier.trim().toLowerCase();
+    const cleanPassword = password.trim();
 
-    if (!inputUser) {
-      setErrorMsg('Please enter your username or email.');
+    if (!cleanIdentifier) {
+      setErrorMsg('Please enter your username or email address.');
+      triggerHaptic('warning');
       return;
     }
 
-    if (!inputPass) {
-      setErrorMsg('Please enter your security password.');
-      return;
-    }
-
-    // Match against current users
-    const matchedUser = allUsers.find(
-      u =>
-        u.username?.toLowerCase() === inputUser ||
-        u.email?.toLowerCase() === inputUser ||
-        u.name.toLowerCase() === inputUser
-    );
-
-    if (!matchedUser) {
-      const nextFail = failedAttempts + 1;
-      setFailedAttempts(nextFail);
-      if (nextFail >= MAX_FAILED_ATTEMPTS) {
-        setLockoutRemaining(LOCKOUT_SECONDS);
-        setErrorMsg(`Too many failed attempts. Security lockout active for ${LOCKOUT_SECONDS} seconds.`);
-      } else {
-        setErrorMsg(`User not found. Use "suraphel" to log in as SuperAdmin.`);
-      }
-      return;
-    }
-
-    // Check password securely using verifyPassword
-    const isPassValid = await verifyPassword(inputPass, matchedUser);
-    if (isPassValid || inputPass === 'password123') {
-      setFailedAttempts(0);
-      handlePerformLogin(matchedUser);
-    } else {
-      const nextFail = failedAttempts + 1;
-      setFailedAttempts(nextFail);
-      if (nextFail >= MAX_FAILED_ATTEMPTS) {
-        setLockoutRemaining(LOCKOUT_SECONDS);
-        setErrorMsg(`Too many failed attempts. Security lockout active for ${LOCKOUT_SECONDS} seconds.`);
-      } else {
-        setErrorMsg(`Invalid password. Attempt ${nextFail} of ${MAX_FAILED_ATTEMPTS}. (Default: password123)`);
-      }
-    }
-  };
-
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg(null);
-    setSuccessMsg(null);
-
-    const fullNameTrim = regFullName.trim();
-    const usernameTrim = regUsername.trim().toLowerCase();
-    const emailTrim = regEmail.trim().toLowerCase();
-    const passTrim = regPassword.trim();
-
-    if (!fullNameTrim || !usernameTrim || !emailTrim || !passTrim) {
-      setErrorMsg('All registration fields are required.');
-      return;
-    }
-
-    if (passTrim.length < 6) {
-      setErrorMsg('Password must be at least 6 characters for security.');
-      return;
-    }
-
-    if (passTrim !== regConfirmPassword.trim()) {
-      setErrorMsg('Passwords do not match.');
-      return;
-    }
-
-    // Ensure username is not already taken
-    const existing = allUsers.find(
-      u =>
-        u.username?.toLowerCase() === usernameTrim ||
-        u.email?.toLowerCase() === emailTrim
-    );
-    if (existing) {
-      setErrorMsg(`User with username "@${usernameTrim}" or email already exists.`);
+    if (!cleanPassword) {
+      setErrorMsg('Please enter your account password.');
+      triggerHaptic('warning');
       return;
     }
 
@@ -189,102 +143,245 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     triggerHaptic('medium');
 
     try {
-      const pHash = await hashPassword(passTrim);
-      const newUserId = `usr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-      const newUser: UserProfile = {
-        id: newUserId,
-        name: fullNameTrim,
-        username: usernameTrim,
-        email: emailTrim,
-        role: regRole,
-        active: true,
-        isApproved: true,
-        passwordHash: pHash,
-        permissions: DEFAULT_ROLE_PERMISSIONS[regRole] || DEFAULT_ROLE_PERMISSIONS.Partner,
-        branch: 'Bole HQ',
-        lastActive: `${TODAY_START_DATE}T08:00:00.000Z`,
-        has_seen_onboarding: false
-      };
+      // 1. First, attempt backend authentication with server rate-limiting
+      let backendSuccess = false;
+      let authenticatedUser: UserProfile | null = null;
 
-      if (onRegisterUser) {
-        onRegisterUser(newUser);
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identifier: cleanIdentifier,
+            password: cleanPassword,
+            remember: rememberMe
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.status === 429) {
+          handleApplyLockout();
+          setErrorMsg(data.error || `Too many failed attempts. Security lockout active.`);
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (response.ok && data.success && data.user) {
+          backendSuccess = true;
+          // Match or construct user profile
+          const existing = allUsers.find(
+            (u) =>
+              u.id === data.user.id ||
+              u.email.toLowerCase() === data.user.email.toLowerCase() ||
+              u.username?.toLowerCase() === data.user.username?.toLowerCase()
+          );
+
+          authenticatedUser = existing || {
+            id: data.user.id,
+            name: data.user.name,
+            email: data.user.email,
+            username: data.user.username,
+            role: data.user.role,
+            active: true,
+            isApproved: true,
+            branch: data.user.branch || 'Addis Ababa HQ',
+            lastActive: 'Just now'
+          };
+        }
+      } catch (backendErr) {
+        console.warn('[Login] Backend verification failed, evaluating fallback auth:', backendErr);
       }
 
-      setSuccessMsg(`Account for "${fullNameTrim}" registered successfully starting today! Logging you in...`);
-      setTimeout(() => {
-        handlePerformLogin(newUser);
-      }, 750);
-    } catch (err) {
-      setErrorMsg('Registration failed due to a security error. Please retry.');
+      // 2. If backend succeeded, proceed to login
+      if (backendSuccess && authenticatedUser) {
+        setFailedAttempts(0);
+        try {
+          localStorage.removeItem('pz_login_failed_attempts');
+          localStorage.removeItem('pz_login_lockout_until');
+        } catch {}
+
+        // Also attempt Firebase Auth in background if email is configured
+        if (authenticatedUser.email) {
+          try {
+            await firebaseSignIn(authenticatedUser.email, cleanPassword);
+          } catch (_) {
+            // Firebase Auth sync is non-blocking for ERP access
+          }
+        }
+
+        setSuccessMsg('Authentication verified. Accessing ERP...');
+        setTimeout(() => {
+          onLogin(authenticatedUser!, rememberMe);
+          setIsSubmitting(false);
+        }, 300);
+        return;
+      }
+
+      // 3. Fallback: Check local salted hash if offline/server disconnected
+      const matchedLocal = allUsers.find(
+        (u) =>
+          u.username?.toLowerCase() === cleanIdentifier ||
+          u.email.toLowerCase() === cleanIdentifier ||
+          u.name.toLowerCase() === cleanIdentifier
+      );
+
+      if (matchedLocal) {
+        const isValid = await verifyPassword(cleanPassword, matchedLocal);
+        if (isValid) {
+          setFailedAttempts(0);
+          try {
+            localStorage.removeItem('pz_login_failed_attempts');
+          } catch {}
+          setSuccessMsg('Authentication verified. Accessing ERP...');
+          setTimeout(() => {
+            onLogin(matchedLocal, rememberMe);
+            setIsSubmitting(false);
+          }, 300);
+          return;
+        }
+      }
+
+      // Failed authentication: Increment attempt counter and apply rate limiting
+      const nextFail = failedAttempts + 1;
+      setFailedAttempts(nextFail);
+      try {
+        localStorage.setItem('pz_login_failed_attempts', String(nextFail));
+      } catch {}
+
+      if (nextFail >= MAX_FAILED_ATTEMPTS) {
+        handleApplyLockout();
+        setErrorMsg(`Too many failed attempts. Security cooldown active for ${LOCKOUT_SECONDS}s.`);
+      } else {
+        // GENERIC ERROR MESSAGE: Never reveal whether username or email exists in the system!
+        setErrorMsg(`Invalid credentials. Please verify your username/email and password (${MAX_FAILED_ATTEMPTS - nextFail} attempt${MAX_FAILED_ATTEMPTS - nextFail === 1 ? '' : 's'} remaining).`);
+      }
+      triggerHaptic('warning');
       setIsSubmitting(false);
+
+    } catch (err: any) {
+      setErrorMsg('An unexpected authentication error occurred. Please try again.');
+      setIsSubmitting(false);
+    }
+  };
+
+  // Password Recovery handler
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotErrorMsg(null);
+    setForgotSuccessMsg(null);
+
+    const cleanEmail = forgotEmail.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setForgotErrorMsg('Please provide a valid email address.');
+      return;
+    }
+
+    setForgotSubmitting(true);
+    triggerHaptic('medium');
+
+    try {
+      // 1. Dispatch Firebase Auth password reset
+      try {
+        await firebaseSendPasswordReset(cleanEmail);
+      } catch (_) {}
+
+      // 2. Dispatch backend password reset endpoint
+      await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail })
+      });
+
+      // Always show generic success message (no user enumeration)
+      setForgotSuccessMsg('If an authorized account is associated with this email, password recovery instructions have been dispatched.');
+      setTimeout(() => {
+        setForgotEmail('');
+      }, 3000);
+    } catch (err: any) {
+      setForgotErrorMsg('Unable to dispatch recovery email at this time. Please contact your SuperAdmin.');
+    } finally {
+      setForgotSubmitting(false);
+    }
+  };
+
+  // Request Access handler (replaces open public registration)
+  const handleRequestAccessSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReqErrorMsg(null);
+    setReqSuccessMsg(null);
+
+    const cleanName = reqFullName.trim();
+    const cleanEmail = reqEmail.trim().toLowerCase();
+
+    if (!cleanName || !cleanEmail || !cleanEmail.includes('@')) {
+      setReqErrorMsg('Full name and a valid email address are required.');
+      return;
+    }
+
+    setReqSubmitting(true);
+    triggerHaptic('medium');
+
+    try {
+      const response = await fetch('/api/auth/request-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: cleanName,
+          email: cleanEmail,
+          requestedRole: reqRole,
+          branch: reqBranch,
+          reason: reqReason
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to submit access request');
+      }
+
+      setReqSuccessMsg(data.message || 'Access request received. Your SuperAdmin will review and dispatch an activation link.');
+      setTimeout(() => {
+        setReqFullName('');
+        setReqEmail('');
+        setReqReason('');
+      }, 3000);
+    } catch (err: any) {
+      setReqErrorMsg(err.message || 'Unable to submit request. Please reach out to your administrator directly.');
+    } finally {
+      setReqSubmitting(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-[#070B14] flex flex-col justify-center items-center p-4 select-none relative overflow-hidden">
-      {/* Ambient background glow elements */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[380px] bg-gradient-to-tr from-cyan-600/15 via-blue-600/20 to-purple-600/15 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute -bottom-20 right-10 w-80 h-80 bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none" />
+      {/* Ambient gradient glow backdrop */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[340px] bg-gradient-to-tr from-cyan-600/15 via-blue-600/15 to-indigo-600/10 blur-[130px] rounded-full pointer-events-none" />
+      <div className="absolute -bottom-24 right-10 w-72 h-72 bg-emerald-500/10 blur-[110px] rounded-full pointer-events-none" />
 
-      <div className="w-full max-w-md relative z-10 flex flex-col gap-5">
+      <div className="w-full max-w-sm sm:max-w-md relative z-10 flex flex-col gap-4">
         {/* Brand Header */}
-        <div className="flex flex-col items-center text-center gap-3">
+        <div className="flex flex-col items-center text-center gap-2.5">
           <div className="relative">
-            <AppLogo size="xl" className="rounded-2xl shadow-xl shadow-cyan-500/10 border border-slate-700/50" />
+            <AppLogo size="xl" className="rounded-2xl shadow-xl shadow-cyan-500/10 border border-slate-800" />
             <div className="absolute -bottom-1 -right-1 p-1 bg-emerald-500 rounded-full border-2 border-[#070B14]" title="Security Active">
               <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
             </div>
           </div>
           <div>
-            <h1 className="text-2xl font-black text-white tracking-tight flex items-center justify-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center justify-center gap-2">
               Plus Game Zone
-              <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+              <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
                 ERP 2026
               </span>
             </h1>
-            <p className="text-xs text-slate-400 mt-1">PlayStation Lounge & Gaming Financial Management</p>
+            <p className="text-xs text-slate-400 mt-0.5">Authorized Financial & Operations Management</p>
           </div>
         </div>
 
-        {/* Tab Switcher: Sign In vs Register (Starting Today) */}
-        <div className="grid grid-cols-2 p-1 bg-slate-900/90 border border-slate-800 rounded-2xl">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('signin');
-              setErrorMsg(null);
-              setSuccessMsg(null);
-            }}
-            className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-              activeTab === 'signin'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <LogIn className="w-3.5 h-3.5" />
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('register');
-              setErrorMsg(null);
-              setSuccessMsg(null);
-            }}
-            className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-              activeTab === 'register'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            Register (Starts Today)
-          </button>
-        </div>
-
-        {/* Main Card */}
-        <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-2xl shadow-black/80 flex flex-col gap-5">
-          {/* Status / Alert Messages */}
+        {/* Compact Login Card */}
+        <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl shadow-black/80 flex flex-col gap-4">
+          {/* Status Messages */}
           {errorMsg && (
             <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2.5 animate-fadeIn">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
@@ -299,7 +396,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             </div>
           )}
 
-          {/* Lockout Warning Banner */}
+          {/* Security Lockout Banner */}
           {lockoutRemaining > 0 && (
             <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs flex items-center justify-between animate-pulse">
               <div className="flex items-center gap-2">
@@ -310,272 +407,350 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             </div>
           )}
 
-          {activeTab === 'signin' ? (
-            <>
-              {/* Active SuperAdmin Quick 1-Click Card (Suraphel) */}
-              {superAdmin && (
-                <div className="bg-gradient-to-br from-slate-800/80 to-slate-800/40 border border-cyan-500/30 rounded-2xl p-4 flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-cyan-500/25">
-                        {superAdmin.name.charAt(0)}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-white tracking-wide">{superAdmin.name}</span>
-                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                            <ShieldCheck className="w-3 h-3" />
-                            SuperAdmin
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-400">@{superAdmin.username || 'suraphel'} • Working Since Today</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handlePerformLogin(superAdmin)}
-                    disabled={isSubmitting || lockoutRemaining > 0}
-                    className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-cyan-200" />
-                    {isSubmitting ? 'Accessing ERP...' : '1-Click Login as Suraphel'}
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+          {/* Primary Sign In Form */}
+          <form onSubmit={handleFormSubmit} className="flex flex-col gap-3.5">
+            {/* Username or Email Input */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-slate-300">
+                Username or Email
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                  <User className="w-4 h-4" />
                 </div>
-              )}
+                <input
+                  type="text"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder="e.g. suraphel or user@pluszone.et"
+                  autoComplete="username"
+                  required
+                  disabled={lockoutRemaining > 0 || isSubmitting}
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors disabled:opacity-50"
+                />
+              </div>
+            </div>
 
-              {/* Divider */}
-              <div className="flex items-center gap-3">
-                <div className="h-px bg-slate-800 flex-1" />
-                <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">or sign in with password</span>
-                <div className="h-px bg-slate-800 flex-1" />
+            {/* Password Input */}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-300">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotModal(true);
+                    setForgotErrorMsg(null);
+                    setForgotSuccessMsg(null);
+                  }}
+                  className="text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+                >
+                  Forgot password?
+                </button>
+              </div>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  autoComplete="current-password"
+                  required
+                  disabled={lockoutRemaining > 0 || isSubmitting}
+                  className="w-full pl-10 pr-10 py-2.5 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((p) => !p)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Remember Device Preference */}
+            <div className="flex items-center justify-between py-0.5">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-cyan-500 focus:ring-0 cursor-pointer"
+                />
+                <span className="text-xs text-slate-400">Remember this device</span>
+              </label>
+              <span className="text-[10px] text-slate-500 font-mono">TLS 1.3 Active</span>
+            </div>
+
+            {/* Primary Sign In Button */}
+            <button
+              type="submit"
+              disabled={isSubmitting || lockoutRemaining > 0}
+              className="w-full mt-1 py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-blue-500 active:scale-[0.98] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Verifying Credentials...</span>
+                </>
+              ) : (
+                <>
+                  <LogIn className="w-4 h-4 text-cyan-200" />
+                  <span>Sign In</span>
+                  <ArrowRight className="w-4 h-4 text-cyan-300" />
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Request Access Link */}
+          <div className="pt-3 border-t border-slate-800 text-center">
+            <p className="text-xs text-slate-400">
+              Need access to Plus Game Zone ERP?{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRequestAccessModal(true);
+                  setReqErrorMsg(null);
+                  setReqSuccessMsg(null);
+                }}
+                className="text-cyan-400 hover:text-cyan-300 font-semibold cursor-pointer transition-colors underline-offset-2 hover:underline"
+              >
+                Request access
+              </button>
+            </p>
+          </div>
+
+          {/* Security & RBAC Assurance Badge */}
+          <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500">
+            <span className="flex items-center gap-1.5 text-slate-400">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              Role-Based Access Control
+            </span>
+            <span className="font-mono text-[10px] text-slate-500">Zero-Trust Secured</span>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="text-center text-xs text-slate-500">
+          <p>© 2026 Plus Game Zone • Official Business Ledger</p>
+          <p className="text-[11px] text-slate-600 mt-0.5">
+            Security audit & access policy strictly enforced. Unauthorized entry prohibited.
+          </p>
+        </div>
+      </div>
+
+      {/* Forgot Password Recovery Modal */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl relative">
+            <button
+              onClick={() => setShowForgotModal(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="text-left space-y-1">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center mb-2">
+                <KeyRound className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-white">Password Recovery</h3>
+              <p className="text-xs text-slate-400">
+                Enter your registered email address to receive password reset instructions.
+              </p>
+            </div>
+
+            {forgotErrorMsg && (
+              <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{forgotErrorMsg}</span>
+              </div>
+            )}
+
+            {forgotSuccessMsg && (
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{forgotSuccessMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleForgotSubmit} className="space-y-3">
+              <div className="flex flex-col gap-1 text-left">
+                <label className="text-xs font-semibold text-slate-300">Email Address</label>
+                <input
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  placeholder="name@pluszone.et"
+                  required
+                  disabled={forgotSubmitting}
+                  className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                />
               </div>
 
-              {/* Login Form */}
-              <form onSubmit={handleFormSubmit} className="flex flex-col gap-4">
-                {/* Username */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-                    <span>Username or Email</span>
-                    <span className="text-[11px] text-slate-500">suraphel</span>
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                      <User className="w-4 h-4" />
-                    </div>
-                    <input
-                      type="text"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      placeholder="suraphel"
-                      autoComplete="username"
-                      disabled={lockoutRemaining > 0}
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors disabled:opacity-50"
-                    />
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-                    <span>Password</span>
-                    <span className="text-[11px] text-slate-500">Default: password123</span>
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                      <Lock className="w-4 h-4" />
-                    </div>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      autoComplete="current-password"
-                      disabled={lockoutRemaining > 0}
-                      className="w-full pl-10 pr-10 py-2.5 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors disabled:opacity-50"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(p => !p)}
-                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Security Preferences */}
-                <div className="flex items-center justify-between py-1">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-cyan-500 focus:ring-0 focus:ring-offset-0 cursor-pointer"
-                    />
-                    <span className="text-xs text-slate-400">Remember session</span>
-                  </label>
-                  <span className="text-[11px] text-emerald-400/90 font-medium flex items-center gap-1">
-                    <Calendar className="w-3 h-3" /> Today: Oct 24, 2026
-                  </span>
-                </div>
-
-                {/* Submit Button */}
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-800 text-slate-400 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting || lockoutRemaining > 0}
-                  className="w-full mt-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-[0.98] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-slate-700 hover:border-slate-600 transition-all cursor-pointer disabled:opacity-50"
+                  disabled={forgotSubmitting}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
-                  {isSubmitting ? (
-                    <span>Verifying Credentials...</span>
+                  {forgotSubmitting ? (
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <>
-                      <span>Secure Sign In</span>
-                      <ArrowRight className="w-4 h-4 text-cyan-400" />
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Send Link</span>
                     </>
                   )}
                 </button>
-              </form>
-            </>
-          ) : (
-            /* Registration Form (Starts Today) */
-            <form onSubmit={handleRegisterSubmit} className="flex flex-col gap-3.5">
-              <div className="p-3 rounded-xl bg-cyan-950/40 border border-cyan-800/40 flex items-start gap-2.5 text-xs text-cyan-300">
-                <Calendar className="w-4 h-4 shrink-0 text-cyan-400 mt-0.5" />
-                <div>
-                  <span className="font-semibold block text-cyan-200">Start Date: Today (2026-10-24)</span>
-                  New accounts registered here are active from today with clean ledger access.
-                </div>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
 
-              {/* Full Name */}
+      {/* Request Access Modal (Replaces public self-registration) */}
+      {showRequestAccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-sm sm:max-w-md space-y-4 shadow-2xl relative">
+            <button
+              onClick={() => setShowRequestAccessModal(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="text-left space-y-1">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center mb-2">
+                <Building className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-white">Request Access</h3>
+              <p className="text-xs text-slate-400">
+                Submit your details for SuperAdmin review. All ERP accounts require administrator authorization.
+              </p>
+            </div>
+
+            {reqErrorMsg && (
+              <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{reqErrorMsg}</span>
+              </div>
+            )}
+
+            {reqSuccessMsg && (
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{reqSuccessMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleRequestAccessSubmit} className="space-y-3 text-left">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-slate-300">Full Name</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <input
-                    type="text"
-                    value={regFullName}
-                    onChange={(e) => setRegFullName(e.target.value)}
-                    placeholder="e.g. Dawit Haile"
-                    required
-                    className="w-full pl-9 pr-3 py-2 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-                  />
-                </div>
+                <input
+                  type="text"
+                  value={reqFullName}
+                  onChange={(e) => setReqFullName(e.target.value)}
+                  placeholder="e.g. Dawit Haile"
+                  required
+                  disabled={reqSubmitting}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                />
               </div>
 
-              {/* Username & Email in Grid */}
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-300">Username</label>
+                  <label className="text-xs font-semibold text-slate-300">Email Address</label>
                   <input
-                    type="text"
-                    value={regUsername}
-                    onChange={(e) => setRegUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                    placeholder="dawit"
+                    type="email"
+                    value={reqEmail}
+                    onChange={(e) => setReqEmail(e.target.value)}
+                    placeholder="dawit@pluszone.et"
                     required
-                    className="w-full px-3 py-2 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                    disabled={reqSubmitting}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-300">Role</label>
+                  <label className="text-xs font-semibold text-slate-300">Requested Role</label>
                   <select
-                    value={regRole}
-                    onChange={(e) => setRegRole(e.target.value as UserRole)}
-                    className="w-full px-2.5 py-2 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-cyan-500"
+                    value={reqRole}
+                    onChange={(e) => setReqRole(e.target.value as UserRole)}
+                    disabled={reqSubmitting}
+                    className="w-full px-2.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-cyan-500"
                   >
-                    <option value="Partner">Partner</option>
+                    <option value="Staff">Staff (Operations)</option>
+                    <option value="Partner">Partner (Financial)</option>
                     <option value="Admin">Admin</option>
-                    <option value="Viewer">Viewer (Read Only)</option>
                   </select>
                 </div>
               </div>
 
-              {/* Email */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-300">Email Address</label>
+                <label className="text-xs font-semibold text-slate-300">Branch / Station</label>
                 <input
-                  type="email"
-                  value={regEmail}
-                  onChange={(e) => setRegEmail(e.target.value)}
-                  placeholder="dawit@pluszone.et"
-                  required
-                  className="w-full px-3 py-2 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                  type="text"
+                  value={reqBranch}
+                  onChange={(e) => setReqBranch(e.target.value)}
+                  placeholder="e.g. Addis Ababa HQ"
+                  disabled={reqSubmitting}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
                 />
               </div>
 
-              {/* Password & Confirm */}
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-300">Password</label>
-                  <div className="relative">
-                    <input
-                      type={regShowPassword ? 'text' : 'password'}
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                      placeholder="Min 6 chars"
-                      required
-                      className="w-full px-3 py-2 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-                    <span>Confirm</span>
-                    <button
-                      type="button"
-                      onClick={() => setRegShowPassword(p => !p)}
-                      className="text-[10px] text-cyan-400 cursor-pointer"
-                    >
-                      {regShowPassword ? 'Hide' : 'Show'}
-                    </button>
-                  </label>
-                  <input
-                    type={regShowPassword ? 'text' : 'password'}
-                    value={regConfirmPassword}
-                    onChange={(e) => setRegConfirmPassword(e.target.value)}
-                    placeholder="Repeat"
-                    required
-                    className="w-full px-3 py-2 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-                  />
-                </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-300">Reason / Note (Optional)</label>
+                <textarea
+                  value={reqReason}
+                  onChange={(e) => setReqReason(e.target.value)}
+                  placeholder="e.g. Cashier shift duty, station supervisor..."
+                  rows={2}
+                  disabled={reqSubmitting}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 resize-none"
+                />
               </div>
 
-              {/* Register Submit */}
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full mt-2 py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
-              >
-                <KeyRound className="w-4 h-4" />
-                {isSubmitting ? 'Registering...' : 'Register Account (Start Today)'}
-              </button>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowRequestAccessModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-800 text-slate-400 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  disabled={reqSubmitting}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {reqSubmitting ? (
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Submit Request</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </form>
-          )}
-
-          {/* Confidentiality & Security Guarantee Badge */}
-          <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500">
-            <span className="flex items-center gap-1.5 text-slate-400">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              Confidential & Protected
-            </span>
-            <span className="font-mono text-[10px] text-slate-500">SHA-256 Salted</span>
           </div>
         </div>
-
-        {/* Footer info */}
-        <div className="text-center text-xs text-slate-500">
-          <p>Plus Game Zone ERP • Official Lounge Ledger</p>
-          <p className="text-[11px] text-slate-600 mt-0.5 flex items-center justify-center gap-1.5">
-            <Gamepad2 className="w-3 h-3 text-cyan-500" />
-            SuperAdmin: <span className="text-slate-400 font-semibold">Suraphel</span> • Operations Started Today (2026-10-24)
-          </p>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

@@ -1,4 +1,17 @@
-export type UserRole = 'SuperAdmin' | 'Admin' | 'Partner' | 'Viewer';
+export type UserRole = 'SuperAdmin' | 'Admin' | 'Partner' | 'Staff' | 'Viewer';
+
+export interface AccessRequest {
+  id: string;
+  fullName: string;
+  email: string;
+  requestedRole: UserRole;
+  branch: string;
+  reason?: string;
+  submittedAt: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  reviewedAt?: string;
+  reviewedBy?: string;
+}
 
 export interface UserPermissions {
   dashboard: boolean;
@@ -510,6 +523,7 @@ export interface ERPState {
   automatedEmailReportsSettings?: AutomatedEmailReportsSettings;
   sentReportEmailLogs?: SentReportEmailLog[];
   deletedEntityIds?: string[];
+  accessRequests?: AccessRequest[];
   shopHours?: ShopOperatingHours;
   theme: 'dark' | 'light';
   hideBalances: boolean;

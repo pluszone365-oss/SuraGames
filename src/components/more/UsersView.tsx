@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { UserProfile, UserRole, UserPermissions, ERPState, Transaction } from '../../types';
 import { triggerHaptic } from '../../lib/haptics';
-import { DEFAULT_ROLE_PERMISSIONS, generateTemporaryPassword, getEffectivePermissions } from '../../lib/auth';
+import { DEFAULT_ROLE_PERMISSIONS, generateTemporaryPassword, getEffectivePermissions, hashPassword } from '../../lib/auth';
 
 interface UsersViewProps {
   users: UserProfile[];
@@ -113,8 +113,8 @@ export const UsersView: React.FC<UsersViewProps> = ({
   };
 
   const handleOpenAdd = (mode: 'INVITE_EMAIL' | 'MANUAL_CREATE' = 'INVITE_EMAIL') => {
-    if (!isAdminOrSuperAdmin) {
-      alert('Security Protocol: Only Admins and SuperAdmins can register or invite new users.');
+    if (!isSuperAdmin) {
+      alert('Security Protocol: Only an authorized SuperAdmin may register or invite new users.');
       return;
     }
     triggerHaptic('light');
@@ -132,8 +132,8 @@ export const UsersView: React.FC<UsersViewProps> = ({
   };
 
   const handleOpenEdit = (user: UserProfile) => {
-    if (!isAdminOrSuperAdmin && user.id !== currentUser.id) {
-      alert('Security Protocol: Only Admins and SuperAdmins can modify user roles & permissions.');
+    if (!isSuperAdmin && user.id !== currentUser.id) {
+      alert('Security Protocol: Only an authorized SuperAdmin can modify user roles & permissions.');
       return;
     }
     triggerHaptic('light');
@@ -405,11 +405,12 @@ export const UsersView: React.FC<UsersViewProps> = ({
     }
   };
 
-  const handleSaveAddManual = () => {
+  const handleSaveAddManual = async () => {
     if (!name.trim() || !email.trim()) return;
     triggerHaptic('success');
 
     const generatedPass = tempPassword.trim() || generateTemporaryPassword();
+    const pHash = await hashPassword(generatedPass);
 
     const newUser: UserProfile = {
       id: `u-${Date.now()}`,
@@ -422,7 +423,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
       hasSetPassword: false,
       isTemporaryPassword: true,
       mustChangePassword: true,
-      password: generatedPass,
+      passwordHash: pHash,
       invitationCode: `PZ-INV-${Math.floor(1000 + Math.random() * 9000)}`,
       permissions,
       createdBy: currentUser.name,
@@ -466,9 +467,20 @@ export const UsersView: React.FC<UsersViewProps> = ({
     setShowAddModal(false);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingUser || !name.trim() || !email.trim()) return;
+
+    // Security Rule: Root SuperAdmin cannot be demoted
+    if ((editingUser.id === 'u-1' || editingUser.username === 'suraphel') && role !== 'SuperAdmin') {
+      alert('Security Protocol: The primary SuperAdmin account role cannot be demoted.');
+      return;
+    }
+
     triggerHaptic('success');
+    let newHash: string | undefined = undefined;
+    if (tempPassword.trim()) {
+      newHash = await hashPassword(tempPassword.trim());
+    }
 
     onUpdateState((prev) => {
       const updatedUsers = prev.users.map((u) => {
@@ -483,8 +495,9 @@ export const UsersView: React.FC<UsersViewProps> = ({
             permissions
           };
 
-          if (tempPassword.trim()) {
-            updated.password = tempPassword.trim();
+          if (newHash) {
+            delete updated.password;
+            updated.passwordHash = newHash;
             updated.isTemporaryPassword = true;
             updated.mustChangePassword = true;
             updated.hasSetPassword = false;
@@ -532,24 +545,29 @@ export const UsersView: React.FC<UsersViewProps> = ({
     setEditingUser(null);
   };
 
-  const handleResetUserPassword = (user: UserProfile) => {
-    if (!isAdminOrSuperAdmin) return;
+  const handleResetUserPassword = async (user: UserProfile) => {
+    if (!isSuperAdmin) {
+      alert('Security Protocol: Only SuperAdmin can reset user passwords.');
+      return;
+    }
     triggerHaptic('light');
     const newTemp = generateTemporaryPassword();
+    const pHash = await hashPassword(newTemp);
 
     onUpdateState((prev) => ({
       ...prev,
-      users: prev.users.map((u) =>
-        u.id === user.id
-          ? {
-              ...u,
-              password: newTemp,
-              isTemporaryPassword: true,
-              mustChangePassword: true,
-              hasSetPassword: false
-            }
-          : u
-      ),
+      users: prev.users.map((u) => {
+        if (u.id === user.id) {
+          const updated = { ...u };
+          delete updated.password;
+          updated.passwordHash = pHash;
+          updated.isTemporaryPassword = true;
+          updated.mustChangePassword = true;
+          updated.hasSetPassword = false;
+          return updated;
+        }
+        return u;
+      }),
       auditLogs: [
         {
           id: `aud-${Date.now()}`,

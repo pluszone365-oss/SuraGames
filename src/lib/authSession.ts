@@ -74,16 +74,18 @@ export function saveAuthSession(user: UserProfile, remember: boolean = true): vo
   }
 }
 
+export const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours max
+export const SESSION_INACTIVITY_LIMIT_MS = 30 * 60 * 1000; // 30 minutes inactivity limit
+
 function isValidActiveSession(session: StoredAuthSession | null): boolean {
-  if (!session || !session.userId) return false;
-  // Primary SuperAdmin Suraphel is always valid
-  if (session.name === 'Suraphel' || session.username === 'suraphel') return true;
-  // Block any obsolete legacy accounts from previous periods
-  const legacyNames = ['yegeta', 'huawei', 'legacy', 'lounge_admin'];
-  if (legacyNames.some(legacy => session.name?.toLowerCase().includes(legacy) || session.username?.toLowerCase().includes(legacy))) {
+  if (!session || !session.userId || !session.email) return false;
+  
+  // Check maximum absolute session expiration
+  const now = Date.now();
+  if (session.loggedInAt && now - session.loggedInAt > SESSION_MAX_AGE_MS) {
     return false;
   }
-  // User registered starting today (2026-10-24 onwards)
+
   return true;
 }
 
@@ -94,58 +96,30 @@ export function getActiveAuthSession(): StoredAuthSession | null {
   if (typeof window === 'undefined') return null;
 
   try {
-    // 1. Check tab sessionStorage first (active tab session, allowing concurrent multi-user testing in separate tabs/windows)
+    // 1. Check tab sessionStorage first (active tab session)
     const sessionRaw = sessionStorage.getItem(AUTH_SESSION_KEY);
     if (sessionRaw) {
       const parsed = JSON.parse(sessionRaw);
-      if (parsed && (parsed.userId || parsed.email)) {
-        if (!isValidActiveSession(parsed)) {
-          clearAuthSession();
-          return null;
-        }
+      if (isValidActiveSession(parsed)) {
         return parsed;
       }
+      clearAuthSession();
+      return null;
     }
 
     // 2. Check persistent localStorage (remembered session across restarts)
     const localRaw = localStorage.getItem(AUTH_SESSION_KEY);
     if (localRaw) {
       const parsed = JSON.parse(localRaw);
-      if (parsed && (parsed.userId || parsed.email)) {
-        if (!isValidActiveSession(parsed)) {
-          clearAuthSession();
-          return null;
-        }
+      if (isValidActiveSession(parsed) && parsed.remember) {
         // Hydrate this tab's sessionStorage
         try {
           sessionStorage.setItem(AUTH_SESSION_KEY, localRaw);
         } catch (_) {}
         return parsed;
       }
-    }
-
-    // 3. Fallback: check stored user profile backup
-    const profileBackup = localStorage.getItem(AUTH_USER_PROFILE_BACKUP);
-    if (profileBackup) {
-      const parsedUser = JSON.parse(profileBackup) as UserProfile;
-      if (parsedUser && parsedUser.id) {
-        const fallbackSession: StoredAuthSession = {
-          userId: parsedUser.id,
-          email: parsedUser.email,
-          username: parsedUser.username,
-          name: parsedUser.name,
-          role: parsedUser.role,
-          loggedInAt: Date.now(),
-          remember: true,
-          user: parsedUser
-        };
-        // Re-hydrate session storage
-        try {
-          sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(fallbackSession));
-          localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(fallbackSession));
-        } catch (_) {}
-        return fallbackSession;
-      }
+      clearAuthSession();
+      return null;
     }
   } catch (err) {
     console.warn('Failed to read active auth session:', err);

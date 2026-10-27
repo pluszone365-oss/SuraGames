@@ -49,6 +49,26 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, UserPermissions> = {
     canReverse: false,
     viewOnly: false
   },
+  Staff: {
+    dashboard: true,
+    income: true,
+    expenses: false,
+    equb: false,
+    loans: false,
+    reports: false,
+    analytics: false,
+    partners: false,
+    settings: false,
+    wallets: true,
+    receivables: true,
+    assets: false,
+    auditLogs: false,
+    canAdd: true,
+    canEdit: false,
+    canDelete: false,
+    canReverse: false,
+    viewOnly: false
+  },
   Viewer: {
     dashboard: true,
     income: true,
@@ -157,7 +177,6 @@ export async function verifyPassword(plainText: string, user: UserProfile): Prom
   if (!plainText || !user) return false;
   const hash = await hashPassword(plainText);
   if (user.passwordHash && user.passwordHash === hash) return true;
-  if (user.password && user.password === plainText) return true;
   return false;
 }
 

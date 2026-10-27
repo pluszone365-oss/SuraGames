@@ -16,7 +16,15 @@ import {
   disableNetwork,
   enableNetwork
 } from 'firebase/firestore';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  sendPasswordResetEmail,
+  createUserWithEmailAndPassword,
+  updatePassword
+} from 'firebase/auth';
 import config from '../../firebase-applet-config.json';
 import { ERPState, isCanonicalTransactionId } from './store';
 import { ChatMessage, ChatMessageReaction, UserProfile } from '../types';
@@ -366,7 +374,7 @@ export function subscribeToFirebaseState(onUpdate: (remoteState: Partial<ERPStat
             const isFreshEpoch = data.resetEpoch === FIREBASE_RESET_EPOCH || rawState.resetEpoch === FIREBASE_RESET_EPOCH;
 
             if (rawState) {
-              rawState.users = [{
+              const defaultAdmin: UserProfile = {
                 id: 'u-1',
                 name: 'Suraphel',
                 email: 'suraphel@pluszone.et',
@@ -374,9 +382,18 @@ export function subscribeToFirebaseState(onUpdate: (remoteState: Partial<ERPStat
                 role: 'SuperAdmin',
                 active: true,
                 isApproved: true,
-                branch: 'Addis Ababa HQ'
-              }];
-              rawState.chatMessages = [];
+                branch: 'Addis Ababa HQ',
+                lastActive: 'Just now'
+              };
+              const rawUsers = Array.isArray(rawState.users) ? rawState.users : [];
+              const sanitizedUsers = rawUsers.map((u: any) => {
+                const copy = { ...u };
+                delete copy.password;
+                return copy;
+              });
+              const hasAdmin = sanitizedUsers.some((u: any) => u.name === 'Suraphel' || u.username === 'suraphel');
+              rawState.users = hasAdmin ? sanitizedUsers : [defaultAdmin, ...sanitizedUsers];
+              rawState.chatMessages = Array.isArray(rawState.chatMessages) ? rawState.chatMessages : [];
 
               if (!isFreshEpoch) {
                 // Completely purge all legacy pre-reset data from Firestore
@@ -469,7 +486,7 @@ export async function fetchLatestFirebaseState(): Promise<Partial<ERPState> | nu
         const isFreshEpoch = data.resetEpoch === FIREBASE_RESET_EPOCH || rawState.resetEpoch === FIREBASE_RESET_EPOCH;
 
         if (rawState) {
-          rawState.users = [{
+          const defaultAdmin: UserProfile = {
             id: 'u-1',
             name: 'Suraphel',
             email: 'suraphel@pluszone.et',
@@ -477,9 +494,18 @@ export async function fetchLatestFirebaseState(): Promise<Partial<ERPState> | nu
             role: 'SuperAdmin',
             active: true,
             isApproved: true,
-            branch: 'Addis Ababa HQ'
-          }];
-          rawState.chatMessages = [];
+            branch: 'Addis Ababa HQ',
+            lastActive: 'Just now'
+          };
+          const rawUsers = Array.isArray(rawState.users) ? rawState.users : [];
+          const sanitizedUsers = rawUsers.map((u: any) => {
+            const copy = { ...u };
+            delete copy.password;
+            return copy;
+          });
+          const hasAdmin = sanitizedUsers.some((u: any) => u.name === 'Suraphel' || u.username === 'suraphel');
+          rawState.users = hasAdmin ? sanitizedUsers : [defaultAdmin, ...sanitizedUsers];
+          rawState.chatMessages = Array.isArray(rawState.chatMessages) ? rawState.chatMessages : [];
 
           if (!isFreshEpoch) {
             // Completely purge all legacy pre-reset data from Firestore
@@ -859,5 +885,41 @@ export function listenToAuthChanges(callback: (firebaseUser: any) => void): () =
   return onAuthStateChanged(auth, (user) => {
     callback(user);
   });
+}
+
+/**
+ * Sign in using Firebase Authentication (Email and Password)
+ */
+export async function firebaseSignIn(email: string, pass: string): Promise<any> {
+  return signInWithEmailAndPassword(auth, email, pass);
+}
+
+/**
+ * Sign out of Firebase Authentication
+ */
+export async function firebaseSignOut(): Promise<void> {
+  return signOut(auth);
+}
+
+/**
+ * Send password reset email via Firebase Authentication
+ */
+export async function firebaseSendPasswordReset(email: string): Promise<void> {
+  return sendPasswordResetEmail(auth, email);
+}
+
+/**
+ * Register a user account in Firebase Auth
+ */
+export async function firebaseCreateUser(email: string, pass: string): Promise<any> {
+  return createUserWithEmailAndPassword(auth, email, pass);
+}
+
+/**
+ * Update authenticated user password
+ */
+export async function firebaseUpdatePassword(newPass: string): Promise<void> {
+  if (!auth.currentUser) throw new Error('No user is currently authenticated');
+  return updatePassword(auth.currentUser, newPass);
 }
 

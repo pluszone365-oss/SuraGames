@@ -98,10 +98,7 @@ const DEFAULT_USERS: UserProfile[] = [
     active: true,
     isApproved: true,
     isDigitalMoneyManager: true, // SuperAdmin by default
-    invitationCode: 'PZ-SUPER-SURAPHEL',
     hasSetPassword: true,
-    password: 'password123',
-    passwordHash: '66504d769f6166d7174783866d9ca51867bf2fab94a58a3149aed4bc8c273d8f',
     isTemporaryPassword: false,
     mustChangePassword: false,
     permissions: DEFAULT_ROLE_PERMISSIONS.SuperAdmin,
@@ -301,6 +298,7 @@ export function createInitialState(): ERPState {
     automatedEmailReportsSettings: DEFAULT_AUTOMATED_EMAIL_REPORTS,
     sentReportEmailLogs: [],
     deletedEntityIds: [],
+    accessRequests: [],
     shopHours: DEFAULT_SHOP_HOURS,
     theme: 'dark',
     hideBalances: false,

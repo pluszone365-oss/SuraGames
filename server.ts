@@ -14,6 +14,7 @@ import {
   sendUserInviteEmail
 } from './server/emailReporter';
 import { createConfirmSmsRouter } from './server/smsWebhook';
+import { createAuthRouter } from './server/authServer';
 
 dotenv.config();
 
@@ -22,6 +23,10 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json());
+
+  // Mount Authentication & Security Router
+  app.use('/api/auth', createAuthRouter());
+  app.use('/api', createAuthRouter()); // for /api/financial/validate
 
   // Mount Payment Fraud-Prevention Cloud Function Webhook (Part 2)
   app.use(createConfirmSmsRouter());

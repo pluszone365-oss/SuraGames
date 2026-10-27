@@ -69,7 +69,7 @@ import {
   registerChatEventListener
 } from './lib/realtimeChat';
 import { Transaction, Transfer, Wallet, UserProfile, TransactionType, Equb, NavTab, Receivable, Loan, LoanPayment, AdminApprovalRequest, ChatMessage, ChatMessageReaction, ChatChannel, AuditLogEntry, ShopOperatingHours } from './types';
-import { CheckCircle2, Sparkles } from 'lucide-react';
+import { CheckCircle2, Sparkles, Clock } from 'lucide-react';
 import { triggerHaptic } from './lib/haptics';
 import { SessionLockModal } from './components/auth/SessionLockModal';
 import { AppSplashScreen } from './components/common/AppSplashScreen';
@@ -88,19 +88,76 @@ export default function App() {
   const [moreSubView, setMoreSubView] = useState<SubViewType>('HUB');
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     const session = getActiveAuthSession();
-    if (!session) return false;
-    if (session.name === 'Suraphel' || session.username === 'suraphel') {
-      return true;
-    }
-    clearAuthSession();
-    return false;
+    return Boolean(session && session.userId && session.email);
   });
   const [isSessionLocked, setIsSessionLocked] = useState<boolean>(false);
+
+  // Inactivity tracking & session expiration warning
+  const [showInactivityWarning, setShowInactivityWarning] = useState<boolean>(false);
+  const [inactivityCountdown, setInactivityCountdown] = useState<number>(120);
+  const lastActivityRef = useRef<number>(Date.now());
+
+  // Sensitive operation re-authentication prompt
+  const [sensitiveActionPrompt, setSensitiveActionPrompt] = useState<{
+    isOpen: boolean;
+    title: string;
+    subtitle: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  const resetActivityTimer = useCallback(() => {
+    lastActivityRef.current = Date.now();
+    if (showInactivityWarning) {
+      setShowInactivityWarning(false);
+      setInactivityCountdown(120);
+    }
+  }, [showInactivityWarning]);
+
+  // Track user interaction for session timeout
+  useEffect(() => {
+    if (!isLoggedIn || isSessionLocked) return;
+
+    const onUserInteraction = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    window.addEventListener('pointerdown', onUserInteraction, { passive: true });
+    window.addEventListener('keydown', onUserInteraction, { passive: true });
+    window.addEventListener('touchstart', onUserInteraction, { passive: true });
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const idleTime = now - lastActivityRef.current;
+      const WARNING_THRESHOLD = 28 * 60 * 1000; // 28 minutes
+      const LOCKOUT_THRESHOLD = 30 * 60 * 1000; // 30 minutes
+
+      if (idleTime >= LOCKOUT_THRESHOLD) {
+        setShowInactivityWarning(false);
+        setIsSessionLocked(true);
+      } else if (idleTime >= WARNING_THRESHOLD) {
+        setShowInactivityWarning(true);
+        const remaining = Math.max(0, Math.ceil((LOCKOUT_THRESHOLD - idleTime) / 1000));
+        setInactivityCountdown(remaining);
+      } else {
+        if (showInactivityWarning) {
+          setShowInactivityWarning(false);
+        }
+      }
+    }, 5000);
+
+    return () => {
+      window.removeEventListener('pointerdown', onUserInteraction);
+      window.removeEventListener('keydown', onUserInteraction);
+      window.removeEventListener('touchstart', onUserInteraction);
+      clearInterval(interval);
+    };
+  }, [isLoggedIn, isSessionLocked, showInactivityWarning]);
 
   const handleLogout = useCallback(() => {
     clearAuthSession();
     setIsLoggedIn(false);
     setIsSessionLocked(false);
+    setShowInactivityWarning(false);
   }, []);
 
   // Validate active auth session against current state users
@@ -311,7 +368,6 @@ export default function App() {
     }
   });
 
-  const lastActivityRef = React.useRef<number>(Date.now());
   const lastCollectRef = React.useRef<{ id: string; amount: number; time: number } | null>(null);
 
   // Listen for session timeout settings changes
@@ -1707,31 +1763,43 @@ export default function App() {
     performRefresh(true);
   };
 
-  // 3.3 Clear All Transactions
+  // 3.3 Clear All Transactions (Protected with SuperAdmin check & Re-Authentication)
   const handleClearAllTransactions = () => {
-    setState(prev => {
-      const newAuditLog = {
-        id: `aud-${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        actorId: prev.currentUser.id,
-        actorName: prev.currentUser.name,
-        action: 'CLEAR_ALL_TRANSACTIONS',
-        entity: 'Transaction',
-        entityId: 'all',
-        diffAfter: { clearedCount: prev.transactions.length },
-        branch: prev.currentUser.branch
-      };
-      const updatedState = {
-        ...prev,
-        transactions: [],
-        auditLogs: [newAuditLog, ...prev.auditLogs]
-      };
-      saveStateToStorage(updatedState);
-      syncStateToFirebaseNow(updatedState);
-      return updatedState;
+    if (state.currentUser.role !== 'SuperAdmin') {
+      triggerToast('⚠️ Security Protocol: Only SuperAdmin can clear transactions.');
+      return;
+    }
+
+    setSensitiveActionPrompt({
+      isOpen: true,
+      title: 'Authorize Ledger Clear',
+      subtitle: `You are requesting to clear all ${state.transactions.length} transactions from the ledger. Please enter your password to confirm authorization.`,
+      onConfirm: () => {
+        setState(prev => {
+          const newAuditLog = {
+            id: `aud-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            actorId: prev.currentUser.id,
+            actorName: prev.currentUser.name,
+            action: 'CLEAR_ALL_TRANSACTIONS',
+            entity: 'Transaction',
+            entityId: 'all',
+            diffAfter: { clearedCount: prev.transactions.length },
+            branch: prev.currentUser.branch
+          };
+          const updatedState = {
+            ...prev,
+            transactions: [],
+            auditLogs: [newAuditLog, ...prev.auditLogs]
+          };
+          saveStateToStorage(updatedState);
+          syncStateToFirebaseNow(updatedState);
+          return updatedState;
+        });
+        triggerToast(`🗑️ Transactions cleared under SuperAdmin authorization.`);
+        performRefresh(true);
+      }
     });
-    triggerToast(`🗑️ All transactions cleared! You can now add entries manually.`);
-    performRefresh(true);
   };
 
   // 4. Pay Equb Round (Supports Single & Split Payments across multiple wallets)
@@ -3817,17 +3885,81 @@ export default function App() {
         onShowToast={triggerToast}
       />
 
-      {/* Session Lock Screen Password & PIN Unlock Modal */}
+      {/* Session Lock Screen Password Unlock Modal */}
       <SessionLockModal
         isOpen={isSessionLocked}
         onClose={() => setIsSessionLocked(false)}
+        currentUser={state.currentUser}
         userEmail={state.currentUser.email}
         userName={state.currentUser.name}
-        currentUserPassword={state.currentUser.password || 'password123'}
-        onSuccess={() => setIsSessionLocked(false)}
+        onSuccess={() => {
+          setIsSessionLocked(false);
+          resetActivityTimer();
+        }}
         onLogout={handleLogout}
         mode="SESSION_UNLOCK"
       />
+
+      {/* Sensitive Administrative Action Re-Authentication Modal */}
+      {sensitiveActionPrompt && (
+        <SessionLockModal
+          isOpen={sensitiveActionPrompt.isOpen}
+          onClose={() => setSensitiveActionPrompt(null)}
+          currentUser={state.currentUser}
+          userEmail={state.currentUser.email}
+          userName={state.currentUser.name}
+          actionTitle={sensitiveActionPrompt.title}
+          actionSubtitle={sensitiveActionPrompt.subtitle}
+          onSuccess={() => {
+            const callback = sensitiveActionPrompt.onConfirm;
+            setSensitiveActionPrompt(null);
+            callback();
+          }}
+          onLogout={handleLogout}
+          mode="SENSITIVE_OPERATION"
+        />
+      )}
+
+      {/* Session Inactivity Warning Modal with Countdown */}
+      {showInactivityWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-[#0B0F19] border border-amber-500/40 rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl text-center relative overflow-hidden">
+            <div className="inline-flex p-3 rounded-2xl bg-amber-500/10 text-amber-400 mb-1 border border-amber-500/20">
+              <Clock className="w-6 h-6 animate-pulse" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base font-extrabold text-white">Session Inactivity Warning</h3>
+              <p className="text-xs text-slate-300">
+                You have been inactive. For your financial security, your session will lock automatically in:
+              </p>
+              <div className="py-2">
+                <span className="font-mono text-3xl font-black text-amber-400">
+                  {inactivityCountdown}s
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowInactivityWarning(false);
+                  setIsSessionLocked(true);
+                }}
+                className="flex-1 py-2.5 rounded-xl border border-slate-700 hover:border-slate-600 text-slate-300 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                Lock Session
+              </button>
+              <button
+                type="button"
+                onClick={resetActivityTimer}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold shadow-lg shadow-cyan-500/25 transition-all cursor-pointer"
+              >
+                Stay Signed In
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Page Help & Guides Modal */}
       <PageHelpModal
