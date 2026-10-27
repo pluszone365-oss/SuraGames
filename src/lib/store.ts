@@ -221,30 +221,30 @@ export function loadInitialState(): ERPState {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed) {
-        parsed.users = DEFAULT_USERS;
-        parsed.currentUser = DEFAULT_USERS[0];
-        parsed.chatMessages = [];
-        parsed.equbs = [];
-        parsed.loans = [];
-        parsed.assets = [];
-        parsed.receivables = [];
-        parsed.transactions = [];
-        parsed.transfers = [];
-        parsed.wallets = [];
-        parsed.recurring = [];
-        parsed.goals = [];
-        parsed.deletedEntityIds = [];
+        parsed.users = Array.isArray(parsed.users) && parsed.users.length > 0 ? parsed.users : DEFAULT_USERS;
+        parsed.currentUser = parsed.currentUser || DEFAULT_USERS[0];
+        parsed.wallets = Array.isArray(parsed.wallets) ? parsed.wallets : [];
+        parsed.transactions = Array.isArray(parsed.transactions) ? parsed.transactions : [];
+        parsed.transfers = Array.isArray(parsed.transfers) ? parsed.transfers : [];
+        parsed.equbs = Array.isArray(parsed.equbs) ? parsed.equbs : [];
+        parsed.loans = Array.isArray(parsed.loans) ? parsed.loans : [];
+        parsed.assets = Array.isArray(parsed.assets) ? parsed.assets : [];
+        parsed.receivables = Array.isArray(parsed.receivables) ? parsed.receivables : [];
+        parsed.recurring = Array.isArray(parsed.recurring) ? parsed.recurring : [];
+        parsed.goals = Array.isArray(parsed.goals) ? parsed.goals : [];
+        parsed.deletedEntityIds = Array.isArray(parsed.deletedEntityIds) ? parsed.deletedEntityIds : [];
         parsed.categories = Array.isArray(parsed.categories) && parsed.categories.length > 0 ? parsed.categories : DEFAULT_CATEGORIES;
-        parsed.auditLogs = [];
-        parsed.pendingReviewTransactions = [];
-        parsed.approvalRequests = [];
+        parsed.auditLogs = Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [];
+        parsed.pendingReviewTransactions = Array.isArray(parsed.pendingReviewTransactions) ? parsed.pendingReviewTransactions : [];
+        parsed.approvalRequests = Array.isArray(parsed.approvalRequests) ? parsed.approvalRequests : [];
         parsed.chatChannels = DEFAULT_CHAT_CHANNELS;
-        parsed.automatedEmailReportsSettings = DEFAULT_AUTOMATED_EMAIL_REPORTS;
-        parsed.sentReportEmailLogs = [];
+        parsed.chatMessages = Array.isArray(parsed.chatMessages) ? parsed.chatMessages : [];
+        parsed.automatedEmailReportsSettings = parsed.automatedEmailReportsSettings || DEFAULT_AUTOMATED_EMAIL_REPORTS;
+        parsed.sentReportEmailLogs = Array.isArray(parsed.sentReportEmailLogs) ? parsed.sentReportEmailLogs : [];
         if (!parsed.shopHours || !parsed.shopHours.openTimeGMT) {
           parsed.shopHours = DEFAULT_SHOP_HOURS;
         }
-        parsed.calendarType = 'GREGORIAN';
+        parsed.calendarType = parsed.calendarType || 'GREGORIAN';
         return parsed;
       }
     }

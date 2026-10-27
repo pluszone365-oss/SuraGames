@@ -423,9 +423,11 @@ export default function App() {
     setDismissedNotifIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
   }, []);
 
-  // Active sync on mount: Immediately push pristine clean baseline to Firebase Firestore ({ merge: false })
+  // Active sync on mount: Push non-destructively only if local state has records
   useEffect(() => {
-    syncStateToFirebaseNow(state, true);
+    if (state.wallets && state.wallets.length > 0) {
+      syncStateToFirebaseNow(state, false);
+    }
   }, []);
 
   // Real-time Firebase Firestore Subscription & Chat Notifications
@@ -1936,13 +1938,13 @@ export default function App() {
   const handleAddWallet = (newW: Omit<Wallet, 'id' | 'totalIn' | 'totalOut'>) => {
     const created: Wallet = {
       ...newW,
-      id: `w-${Date.now()}`,
+      id: `w-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       openingBalance: Number(newW.openingBalance) || 0,
       totalIn: 0,
       totalOut: 0
     };
 
-    const newAuditLog = {
+    const newAuditLog: AuditLogEntry = {
       id: `aud-${Date.now()}`,
       timestamp: new Date().toISOString(),
       actorId: state.currentUser.id,
@@ -1965,13 +1967,12 @@ export default function App() {
       return updated;
     });
 
-    triggerToast(`✓ Wallet "${created.name}" initialized.`);
-    performRefresh(true);
+    triggerToast(`✓ Wallet "${created.name}" created and saved.`);
   };
 
   const handleUpdateWallet = (walletId: string, updates: Partial<Wallet>) => {
     const target = state.wallets.find(w => w.id === walletId);
-    const newAuditLog = {
+    const newAuditLog: AuditLogEntry = {
       id: `aud-${Date.now()}`,
       timestamp: new Date().toISOString(),
       actorId: state.currentUser.id,
@@ -1995,7 +1996,6 @@ export default function App() {
       return updated;
     });
     triggerToast(`Wallet "${updates.name || target?.name || 'settings'}" updated.`);
-    performRefresh(true);
   };
 
   const handleDeleteWallet = (walletId: string) => {
@@ -2007,7 +2007,7 @@ export default function App() {
       return;
     }
 
-    const newAuditLog = {
+    const newAuditLog: AuditLogEntry = {
       id: `aud-${Date.now()}`,
       timestamp: new Date().toISOString(),
       actorId: state.currentUser.id,
@@ -2033,7 +2033,6 @@ export default function App() {
     });
 
     triggerToast(`🗑️ Wallet "${targetWallet.name}" removed.`);
-    performRefresh(true);
   };
 
   // 7. Add Equb

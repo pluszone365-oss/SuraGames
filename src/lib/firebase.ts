@@ -395,37 +395,20 @@ export function subscribeToFirebaseState(onUpdate: (remoteState: Partial<ERPStat
               rawState.users = hasAdmin ? sanitizedUsers : [defaultAdmin, ...sanitizedUsers];
               rawState.chatMessages = Array.isArray(rawState.chatMessages) ? rawState.chatMessages : [];
 
-              if (!isFreshEpoch) {
-                // Completely purge all legacy pre-reset data from Firestore
-                rawState.wallets = [];
-                rawState.transactions = [];
-                rawState.transfers = [];
-                rawState.equbs = [];
-                rawState.loans = [];
-                rawState.assets = [];
-                rawState.recurring = [];
-                rawState.receivables = [];
-                rawState.goals = [];
-                rawState.pendingReviewTransactions = [];
-                rawState.approvalRequests = [];
-                rawState.auditLogs = [];
-                rawState.sentReportEmailLogs = [];
-                rawState.deletedEntityIds = [];
-              } else {
-                // Fresh epoch: filter out legacy IDs
-                rawState.wallets = Array.isArray(rawState.wallets)
-                  ? rawState.wallets.filter((w: any) => !['w-telebirr', 'w-cbe', 'w-ebirr', 'w-cash', 'w-savings'].includes(w.id))
-                  : [];
-                rawState.transactions = Array.isArray(rawState.transactions)
-                  ? rawState.transactions.filter((t: any) => !t.id?.startsWith('tx-start-') && !t.id?.startsWith('tx-20261019'))
-                  : [];
-                rawState.transfers = Array.isArray(rawState.transfers) ? rawState.transfers : [];
-                rawState.equbs = Array.isArray(rawState.equbs) ? rawState.equbs : [];
-                rawState.loans = Array.isArray(rawState.loans) ? rawState.loans : [];
-                rawState.assets = Array.isArray(rawState.assets) ? rawState.assets : [];
-                rawState.recurring = Array.isArray(rawState.recurring) ? rawState.recurring : [];
-                rawState.receivables = Array.isArray(rawState.receivables) ? rawState.receivables : [];
-              }
+              rawState.wallets = Array.isArray(rawState.wallets) ? rawState.wallets : [];
+              rawState.transactions = Array.isArray(rawState.transactions) ? rawState.transactions : [];
+              rawState.transfers = Array.isArray(rawState.transfers) ? rawState.transfers : [];
+              rawState.equbs = Array.isArray(rawState.equbs) ? rawState.equbs : [];
+              rawState.loans = Array.isArray(rawState.loans) ? rawState.loans : [];
+              rawState.assets = Array.isArray(rawState.assets) ? rawState.assets : [];
+              rawState.recurring = Array.isArray(rawState.recurring) ? rawState.recurring : [];
+              rawState.receivables = Array.isArray(rawState.receivables) ? rawState.receivables : [];
+              rawState.goals = Array.isArray(rawState.goals) ? rawState.goals : [];
+              rawState.pendingReviewTransactions = Array.isArray(rawState.pendingReviewTransactions) ? rawState.pendingReviewTransactions : [];
+              rawState.approvalRequests = Array.isArray(rawState.approvalRequests) ? rawState.approvalRequests : [];
+              rawState.auditLogs = Array.isArray(rawState.auditLogs) ? rawState.auditLogs : [];
+              rawState.sentReportEmailLogs = Array.isArray(rawState.sentReportEmailLogs) ? rawState.sentReportEmailLogs : [];
+              rawState.deletedEntityIds = Array.isArray(rawState.deletedEntityIds) ? rawState.deletedEntityIds : [];
             }
             isRemoteUpdate = true;
             lastSyncedFingerprint = getStateFingerprint(rawState as ERPState);
@@ -507,36 +490,20 @@ export async function fetchLatestFirebaseState(): Promise<Partial<ERPState> | nu
           rawState.users = hasAdmin ? sanitizedUsers : [defaultAdmin, ...sanitizedUsers];
           rawState.chatMessages = Array.isArray(rawState.chatMessages) ? rawState.chatMessages : [];
 
-          if (!isFreshEpoch) {
-            // Completely purge all legacy pre-reset data from Firestore
-            rawState.wallets = [];
-            rawState.transactions = [];
-            rawState.transfers = [];
-            rawState.equbs = [];
-            rawState.loans = [];
-            rawState.assets = [];
-            rawState.recurring = [];
-            rawState.receivables = [];
-            rawState.goals = [];
-            rawState.pendingReviewTransactions = [];
-            rawState.approvalRequests = [];
-            rawState.auditLogs = [];
-            rawState.sentReportEmailLogs = [];
-            rawState.deletedEntityIds = [];
-          } else {
-            rawState.wallets = Array.isArray(rawState.wallets)
-              ? rawState.wallets.filter((w: any) => !['w-telebirr', 'w-cbe', 'w-ebirr', 'w-cash', 'w-savings'].includes(w.id))
-              : [];
-            rawState.transactions = Array.isArray(rawState.transactions)
-              ? rawState.transactions.filter((t: any) => !t.id?.startsWith('tx-start-') && !t.id?.startsWith('tx-20261019'))
-              : [];
-            rawState.transfers = Array.isArray(rawState.transfers) ? rawState.transfers : [];
-            rawState.equbs = Array.isArray(rawState.equbs) ? rawState.equbs : [];
-            rawState.loans = Array.isArray(rawState.loans) ? rawState.loans : [];
-            rawState.assets = Array.isArray(rawState.assets) ? rawState.assets : [];
-            rawState.recurring = Array.isArray(rawState.recurring) ? rawState.recurring : [];
-            rawState.receivables = Array.isArray(rawState.receivables) ? rawState.receivables : [];
-          }
+          rawState.wallets = Array.isArray(rawState.wallets) ? rawState.wallets : [];
+          rawState.transactions = Array.isArray(rawState.transactions) ? rawState.transactions : [];
+          rawState.transfers = Array.isArray(rawState.transfers) ? rawState.transfers : [];
+          rawState.equbs = Array.isArray(rawState.equbs) ? rawState.equbs : [];
+          rawState.loans = Array.isArray(rawState.loans) ? rawState.loans : [];
+          rawState.assets = Array.isArray(rawState.assets) ? rawState.assets : [];
+          rawState.recurring = Array.isArray(rawState.recurring) ? rawState.recurring : [];
+          rawState.receivables = Array.isArray(rawState.receivables) ? rawState.receivables : [];
+          rawState.goals = Array.isArray(rawState.goals) ? rawState.goals : [];
+          rawState.pendingReviewTransactions = Array.isArray(rawState.pendingReviewTransactions) ? rawState.pendingReviewTransactions : [];
+          rawState.approvalRequests = Array.isArray(rawState.approvalRequests) ? rawState.approvalRequests : [];
+          rawState.auditLogs = Array.isArray(rawState.auditLogs) ? rawState.auditLogs : [];
+          rawState.sentReportEmailLogs = Array.isArray(rawState.sentReportEmailLogs) ? rawState.sentReportEmailLogs : [];
+          rawState.deletedEntityIds = Array.isArray(rawState.deletedEntityIds) ? rawState.deletedEntityIds : [];
         }
         lastSyncedFingerprint = getStateFingerprint(rawState as ERPState);
         return rawState as Partial<ERPState>;
