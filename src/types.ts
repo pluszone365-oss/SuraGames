@@ -36,7 +36,7 @@ export interface UserPermissions {
   viewOnly: boolean;
 }
 
-export type NavTab = 'dashboard' | 'transactions' | 'wallets' | 'equb' | 'chat' | 'more';
+export type NavTab = 'dashboard' | 'transactions' | 'wallets' | 'equb' | 'chat' | 'more' | 'game_counters';
 
 export interface UserProfile {
   id: string;
@@ -109,7 +109,7 @@ export interface Transaction {
   creatorName?: string;
   branch?: string;
   notes?: string;
-  refType?: 'EQUB' | 'LOAN' | 'ASSET' | 'RECEIVABLE' | 'RECURRING' | 'TRANSFER' | 'SPLIT_SUB_ENTRY';
+  refType?: 'EQUB' | 'LOAN' | 'ASSET' | 'RECEIVABLE' | 'RECURRING' | 'TRANSFER' | 'SPLIT_SUB_ENTRY' | 'GAME_SESSION';
   refId?: string;
   reversed?: boolean;
   reversedAt?: string;

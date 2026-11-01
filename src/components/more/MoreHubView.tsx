@@ -18,7 +18,8 @@ import {
   LogOut,
   MessageSquare,
   HelpCircle,
-  Radio
+  Radio,
+  Gamepad2
 } from 'lucide-react';
 import { ERPState, Receivable } from '../../types';
 import { triggerHaptic } from '../../lib/haptics';
@@ -162,6 +163,19 @@ export const MoreHubView: React.FC<MoreHubViewProps> = ({
   ];
 
   const operationalTiles = [
+    {
+      id: 'GAME_COUNTERS' as any,
+      title: 'Arcade Game Counters (PS5, Timers & Pool)',
+      subtitle: 'PlayStation match counters, 10-min block game timers, pool betting ledger & fee reconciliation',
+      icon: Gamepad2,
+      color: '#00D4AA',
+      onClick: () => {
+        triggerHaptic('medium');
+        if (onNavigateTab) {
+          onNavigateTab('game_counters');
+        }
+      }
+    },
     {
       id: 'SIMULATOR' as any,
       title: 'Business Decision & Scenario Simulator',

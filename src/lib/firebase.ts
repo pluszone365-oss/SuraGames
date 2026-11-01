@@ -31,18 +31,29 @@ import { ChatMessage, ChatMessageReaction, UserProfile } from '../types';
 
 const metaEnv = (import.meta as unknown as { env?: Record<string, string> }).env || {};
 
-export const FIRESTORE_PROJECT_ID = config.projectId || metaEnv.VITE_FIREBASE_PROJECT_ID || 'gen-lang-client-0153646909';
-export const FIRESTORE_DATABASE_ID = config.firestoreDatabaseId || metaEnv.VITE_FIREBASE_DATABASE_ID || 'ai-studio-pluszonefinancee-81b56110-6dcb-4d53-93e5-bd5cf2918283';
+// Prioritize Firebase environment variables, falling back to local config
+export const FIRESTORE_PROJECT_ID = 
+  metaEnv.VITE_FIREBASE_PROJECT_ID || 
+  config.projectId || 
+  'gen-lang-client-0153646909';
+
+export const FIRESTORE_DATABASE_ID = 
+  metaEnv.VITE_FIREBASE_DATABASE_ID || 
+  metaEnv.VITE_FIREBASE_FIRESTORE_DATABASE_ID || 
+  config.firestoreDatabaseId || 
+  'ai-studio-pluszonefinancee-81b56110-6dcb-4d53-93e5-bd5cf2918283';
+
 export const FIRESTORE_UPGRADE_URL = `https://console.firebase.google.com/project/${FIRESTORE_PROJECT_ID}/firestore/databases/${FIRESTORE_DATABASE_ID}/data?openUpgradeDialog=true`;
 export const FIRESTORE_PRICING_URL = 'https://firebase.google.com/pricing#cloud-firestore';
+export const FIREBASE_OAUTH_CLIENT_ID = metaEnv.VITE_FIREBASE_OAUTH_CLIENT_ID || config.oAuthClientId || '';
 
 const firebaseConfig = {
-  apiKey: config.apiKey || metaEnv.VITE_FIREBASE_API_KEY || '',
-  authDomain: config.authDomain || metaEnv.VITE_FIREBASE_AUTH_DOMAIN || '',
+  apiKey: metaEnv.VITE_FIREBASE_API_KEY || config.apiKey || '',
+  authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN || config.authDomain || '',
   projectId: FIRESTORE_PROJECT_ID,
-  storageBucket: config.storageBucket || metaEnv.VITE_FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: config.messagingSenderId || metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: config.appId || metaEnv.VITE_FIREBASE_APP_ID || '',
+  storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET || config.storageBucket || '',
+  messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID || config.messagingSenderId || '',
+  appId: metaEnv.VITE_FIREBASE_APP_ID || config.appId || '',
 };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];

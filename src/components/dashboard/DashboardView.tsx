@@ -45,7 +45,8 @@ import {
   CheckCheck,
   BarChart3,
   Sun,
-  Moon
+  Moon,
+  Gamepad2
 } from 'lucide-react';
 import {
   Wallet,
@@ -553,8 +554,40 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       .slice(0, 6);
   }, [transactions, wallets]);
 
+  // Swipe-right gesture detection to navigate from Dashboard to Game Counters
+  const touchStartPos = React.useRef<{ x: number; y: number; time: number } | null>(null);
+
+  const handleDashboardTouchStart = (e: React.TouchEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (target && (target.closest('button') || target.closest('input') || target.closest('select') || target.closest('textarea') || target.closest('.no-swipe'))) {
+      touchStartPos.current = null;
+      return;
+    }
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+  };
+
+  const handleDashboardTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartPos.current) return;
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartPos.current.x;
+    const deltaY = touch.clientY - touchStartPos.current.y;
+    const elapsed = Date.now() - touchStartPos.current.time;
+    touchStartPos.current = null;
+
+    // Rightward swipe (deltaX >= 75px), fast enough (< 800ms), and predominantly horizontal
+    if (deltaX >= 75 && Math.abs(deltaX) > Math.abs(deltaY) * 1.8 && elapsed < 800) {
+      triggerHaptic('medium');
+      onNavigateTab('game_counters');
+    }
+  };
+
   return (
-    <div className="space-y-6 pb-24 animate-fadeIn font-sans text-slate-900 dark:text-slate-100">
+    <div
+      onTouchStart={handleDashboardTouchStart}
+      onTouchEnd={handleDashboardTouchEnd}
+      className="space-y-6 pb-24 animate-fadeIn font-sans text-slate-900 dark:text-slate-100"
+    >
 
       {/* 1. Executive Header & Date Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#111622] border border-slate-200/80 dark:border-[#1C2638] p-4 sm:p-5 rounded-2xl shadow-sm transition-all">
@@ -657,6 +690,45 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <ArrowRightLeft className="w-3.5 h-3.5 text-blue-500" />
             <span>Transfer</span>
           </button>
+        </div>
+      </div>
+
+      {/* Arcade Game Counters Quick Access Banner */}
+      <div 
+        onClick={() => {
+          triggerHaptic('medium');
+          onNavigateTab('game_counters');
+        }}
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#0C172E] via-[#0E2042] to-[#0A1830] border border-[#00D4AA]/40 p-4 sm:p-5 shadow-lg hover:border-[#00D4AA] cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] group"
+      >
+        <div className="absolute top-0 right-0 w-36 h-36 bg-[#00D4AA]/10 rounded-full blur-2xl pointer-events-none group-hover:bg-[#00D4AA]/20 transition-all" />
+        <div className="flex items-center justify-between gap-3 relative z-10">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-[#00D4AA]/15 border border-[#00D4AA]/40 flex items-center justify-center text-[#00D4AA] shadow-md group-hover:scale-110 transition-transform">
+              <Gamepad2 className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-white text-base tracking-wide flex items-center gap-1.5">
+                  Arcade Game Counters
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/30">
+                    SWIPE RIGHT →
+                  </span>
+                </h3>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                PlayStation Matches (20 ETB) • 10-Min Timed Games • Pool Table & Bets
+              </p>
+            </div>
+          </div>
+          <div className="shrink-0 flex items-center gap-2">
+            <span className="hidden sm:inline-flex items-center gap-1 text-xs font-bold text-[#00D4AA] bg-[#00D4AA]/10 px-3 py-1.5 rounded-xl border border-[#00D4AA]/30 group-hover:bg-[#00D4AA] group-hover:text-[#0A0E1A] transition-all">
+              Launch Counters <ChevronRight className="w-4 h-4" />
+            </span>
+            <div className="sm:hidden w-8 h-8 rounded-full bg-[#00D4AA] text-[#0A0E1A] flex items-center justify-center font-bold">
+              <ChevronRight className="w-5 h-5" />
+            </div>
+          </div>
         </div>
       </div>
 

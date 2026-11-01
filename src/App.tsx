@@ -20,6 +20,7 @@ import { MoreHubView, SubViewType } from './components/more/MoreHubView';
 import { ChatView } from './components/chat/ChatView';
 import { AiAssistantWidget } from './components/ai/AiAssistantWidget';
 import { LoginPage } from './components/auth/LoginPage';
+import { GameCountersView } from './components/gameCounters/GameCountersView';
 import { OnboardingTour, ONBOARDING_STORAGE_KEY } from './components/onboarding/OnboardingTour';
 import { PageHelpModal } from './components/help/PageHelpModal';
 import { getPageTourSteps, FULL_APP_TOUR_STEPS, TourStep } from './components/onboarding/onboardingSteps';
@@ -259,7 +260,7 @@ export default function App() {
     let targetSubView: string = moreSubView;
 
     if (typeof tabOrSubView === 'string') {
-      if (['dashboard', 'transactions', 'wallets', 'equb', 'chat', 'more'].includes(tabOrSubView)) {
+      if (['dashboard', 'transactions', 'wallets', 'equb', 'chat', 'more', 'game_counters'].includes(tabOrSubView)) {
         targetTab = tabOrSubView as NavTab;
         if (maybeSubView !== undefined) targetSubView = maybeSubView;
       } else {
@@ -1120,6 +1121,83 @@ export default function App() {
     triggerToast(`🎮 ${formatETB(amount)} PS5 Gaming revenue logged to ${mainWallet.name}!`);
     sendExternalNotification('PlusZone ERP - Gaming Revenue 🎮', {
       body: `PS5 Revenue ${formatETB(amount)} logged (${category}) to ${mainWallet.name}.`
+    });
+    performRefresh(true);
+  };
+
+  const handleRecordGameRevenue = (data: {
+    amount: number;
+    walletId: string;
+    description: string;
+    category: string;
+    stationId: string;
+  }) => {
+    const targetWallet = state.wallets.find(w => w.id === data.walletId) || state.wallets[0] || { id: 'w-cash', name: 'Main Cash Drawer' };
+    const newTx: Transaction = {
+      id: `tx-game-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      type: 'INCOME',
+      category: data.category || 'Sales Revenue',
+      amount: data.amount,
+      date: new Date().toISOString(),
+      walletId: targetWallet.id,
+      description: data.description,
+      creatorId: state.currentUser.id,
+      creatorName: state.currentUser.name,
+      branch: state.currentUser.branch,
+      refType: 'GAME_SESSION',
+      refId: data.stationId
+    };
+    setState(prev => {
+      const updatedState = {
+        ...prev,
+        transactions: [newTx, ...prev.transactions]
+      };
+      saveStateToStorage(updatedState);
+      syncStateToFirebaseNow(updatedState);
+      return updatedState;
+    });
+    triggerToast(`🎮 ${formatETB(data.amount)} game fee recorded to ${targetWallet.name}!`);
+    sendExternalNotification('PlusZone ERP - Game Fee Recorded 🎮', {
+      body: `${formatETB(data.amount)} (${data.category}) recorded to ${targetWallet.name}.`
+    });
+    performRefresh(true);
+  };
+
+  const handleRecordGameExpense = (data: {
+    amount: number;
+    walletId: string;
+    description: string;
+    category: string;
+    stationId: string;
+  }) => {
+    const targetWallet = state.wallets.find(w => w.id === data.walletId) || state.wallets[0] || { id: 'w-cash', name: 'Main Cash Drawer' };
+    const newTx: Transaction = {
+      id: `tx-game-exp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      type: 'EXPENSE',
+      category: data.category || 'Gaming Operations & Referee Fees',
+      amount: data.amount,
+      date: new Date().toISOString(),
+      walletId: targetWallet.id,
+      description: data.description,
+      expenseScope: 'BUSINESS',
+      creatorId: state.currentUser.id,
+      creatorName: state.currentUser.name,
+      branch: state.currentUser.branch,
+      refType: 'GAME_SESSION',
+      refId: data.stationId
+    };
+    setState(prev => {
+      const updatedState = {
+        ...prev,
+        transactions: [newTx, ...prev.transactions]
+      };
+      saveStateToStorage(updatedState);
+      syncStateToFirebaseNow(updatedState);
+      return updatedState;
+    });
+    triggerToast(`⚽ ${formatETB(data.amount)} referee payout recorded from ${targetWallet.name}!`);
+    sendExternalNotification('PlusZone ERP - Referee Payout ⚽', {
+      body: `${formatETB(data.amount)} paid from ${targetWallet.name} (${data.description}).`
     });
     performRefresh(true);
   };
@@ -3776,6 +3854,16 @@ export default function App() {
             onCollectReceivable={handleCollectReceivable}
             onReplayTour={handleStartTour}
             onOpenHelp={handleOpenHelp}
+          />
+        )}
+
+        {activeTab === 'game_counters' && (
+          <GameCountersView
+            wallets={state.wallets}
+            currentUser={state.currentUser}
+            onBackToDashboard={() => setActiveTab('dashboard')}
+            onRecordRevenue={handleRecordGameRevenue}
+            onRecordExpense={handleRecordGameExpense}
           />
         )}
       </main>
